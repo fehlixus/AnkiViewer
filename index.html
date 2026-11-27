@@ -1760,6 +1760,12 @@
         display: none;
       }
     }
+    .catalog { padding: 18px 20px; }
+    .catalog h2 { font-size: 18px; margin: 0; }
+    .catalog p { margin: 10px 0 0; color: var(--text-secondary); }
+    #deckButtons { display: flex; flex-wrap: wrap; gap: 8px; }
+    #deckButtons:not(:empty), #retryCatalog { margin-top: 12px; }
+    #deckButtons button { max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
   </style>
 </head>
 <body>
@@ -1814,13 +1820,13 @@
             <span id="historyCountBadge" class="count-badge hidden">0</span>
           </button>
 
-          <button type="button" id="btnHeaderImport" class="icon-btn hidden" title="Import a different Anki HTML file">
+          <button type="button" id="btnHeaderImport" class="icon-btn hidden" title="Choose a shared deck or import a file">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="17 8 12 3 7 8"></polyline>
               <line x1="12" y1="3" x2="12" y2="15"></line>
             </svg>
-            Import
+            Decks
           </button>
 
           <button type="button" id="btnTheme" class="icon-btn icon-only" title="Toggle light / dark theme" aria-label="Toggle theme">
@@ -1856,8 +1862,16 @@
       <section id="screenImport" class="import-screen">
         <div class="import-hero">
           <h1>Study your Anki HTML exports</h1>
-          <p>Select an exported Anki HTML file from your device to review cards one by one with OK, NOK, and Skip tracking. Runs 100% locally in your browser.</p>
+          <p>Choose a shared deck or open an HTML export from your device.</p>
         </div>
+
+        <section class="recent-history-wrap catalog" aria-labelledby="catalogTitle">
+          <h2 id="catalogTitle">Shared decks</h2>
+          <p id="catalogStatus" role="status">Finding decks…</p>
+          <div id="deckButtons"></div>
+          <button type="button" class="text-btn hidden" id="retryCatalog">Try again</button>
+        </section>
+        <button type="button" class="text-btn hidden" id="resumeDeck">Return to current session</button>
 
         <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose or drop an Anki HTML export file">
           <div id="dropzoneIdle">
@@ -2077,7 +2091,7 @@
               Past Sessions
             </button>
             <button type="button" id="btnSummaryImport" class="btn btn-secondary">
-              Import Another File
+              Choose Another Deck
             </button>
           </div>
         </div>
@@ -2530,8 +2544,56 @@
         }
       }
 
+      const deckButtons = document.getElementById('deckButtons');
+      const catalogStatus = document.getElementById('catalogStatus');
+      const retryCatalog = document.getElementById('retryCatalog');
+      const resumeDeck = document.getElementById('resumeDeck');
+
+      async function loadCatalog() {
+        retryCatalog.classList.add('hidden');
+        if (location.protocol === 'file:') {
+          catalogStatus.textContent = 'Open the published site to browse shared decks.';
+          return;
+        }
+        catalogStatus.textContent = 'Finding decks…';
+        try {
+          const response = await fetch('./decks.json', { cache: 'no-cache' });
+          if (!response.ok) throw new Error();
+          const names = await response.json();
+          if (!Array.isArray(names)) throw new Error();
+          deckButtons.replaceChildren();
+          for (const name of names.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))) {
+            if (!/^[^/\\]+\.html?$/i.test(name)) continue;
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'btn btn-secondary';
+            button.textContent = name.replace(/\.html?$/i, '');
+            button.addEventListener('click', () => handleFile({
+              name,
+              async text() {
+                const result = await fetch('./' + encodeURIComponent(name));
+                if (!result.ok) throw new Error('This shared deck could not be downloaded.');
+                return result.text();
+              }
+            }));
+            deckButtons.append(button);
+          }
+          catalogStatus.textContent = deckButtons.childElementCount ? '' : 'No shared decks yet.';
+        } catch {
+          catalogStatus.textContent = 'The shared deck list could not be loaded.';
+          retryCatalog.classList.remove('hidden');
+        }
+      }
+
+      retryCatalog.addEventListener('click', loadCatalog);
+      resumeDeck.addEventListener('click', () => showScreen('study'));
+
+      let loadingDeck = false;
       async function handleFile(file) {
-        if (!file) return;
+        if (!file || loadingDeck) return;
+        loadingDeck = true;
+        deckButtons.inert = true;
+        resumeDeck.disabled = true;
         setImportError('');
         showScreen('import');
         setLoading(true, file.name, file.size);
@@ -2563,6 +2625,9 @@
           setLoading(false);
           setImportError(`Could not read file: ${err && err.message ? err.message : 'Unknown error'}`);
         } finally {
+          loadingDeck = false;
+          deckButtons.inert = false;
+          resumeDeck.disabled = false;
           els.fileInput.value = '';
         }
       }
@@ -2601,8 +2666,14 @@
         if (file) handleFile(file);
       });
 
-      els.btnHeaderImport.addEventListener('click', () => els.fileInput.click());
-      els.btnSummaryImport.addEventListener('click', () => els.fileInput.click());
+      function openDeckMenu() {
+        const origin = state.screen === 'history' ? state.previousScreen : state.screen;
+        if (origin !== 'import') resumeDeck.classList.toggle('hidden', origin !== 'study');
+        showScreen('import');
+      }
+
+      els.btnHeaderImport.addEventListener('click', openDeckMenu);
+      els.btnSummaryImport.addEventListener('click', openDeckMenu);
 
       // ================= SESSION MANAGEMENT =================
       function showScreen(name) {
@@ -3747,6 +3818,7 @@
       });
 
       // Init
+      loadCatalog();
       initTheme();
       loadSavedSessions();
     })();

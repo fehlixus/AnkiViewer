@@ -1,0 +1,18 @@
+---
+layout: null
+---
+[
+{%- assign separator = '' -%}
+{%- assign folder_length = page.path.size | minus: page.name.size -%}
+{%- assign folder = page.path | slice: 0, folder_length | prepend: '/' -%}
+{%- for file in site.static_files -%}
+  {%- assign sibling = folder | append: file.name -%}
+  {%- assign extension = file.extname | downcase -%}
+  {%- if file.path == sibling and file.name != 'index.html' -%}
+    {%- if extension == '.html' or extension == '.htm' -%}
+      {{ separator }}{{ file.name | jsonify }}
+      {%- assign separator = ',' -%}
+    {%- endif -%}
+  {%- endif -%}
+{%- endfor -%}
+]
