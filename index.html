@@ -1766,6 +1766,12 @@
     #deckButtons { display: flex; flex-wrap: wrap; gap: 8px; }
     #deckButtons:not(:empty), #retryCatalog { margin-top: 12px; }
     #deckButtons button { max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
+    .browse-tools, .browse-pages { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin:16px 0; }
+    .browse-tools input { flex:1; min-width:0; padding:10px; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:8px; font:inherit; }
+    .browse-card { margin:16px 0; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+    .browse-card h3 { padding:12px 16px; margin:0; font-size:1rem; background:var(--surface); }
+    .browse-card .anki-content { overflow-wrap:anywhere; overflow-x:auto; }
+    .study-meta-actions { flex-wrap:wrap; }
   </style>
 </head>
 <body>
@@ -1939,6 +1945,7 @@
           </div>
 
           <div class="study-meta-actions">
+            <button type="button" class="text-btn browse-open">Browse deck</button>
             <button type="button" id="btnUndo" class="text-btn" disabled title="Undo last action (Z)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="9 14 4 9 9 4"></polyline>
@@ -2084,6 +2091,7 @@
             <button type="button" id="btnStudyNok" class="btn btn-nok-retry hidden">
               Study NOK Cards (<span id="studyNokCount">0</span>)
             </button>
+            <button type="button" class="text-btn browse-open">Browse deck</button>
             <button type="button" id="btnRestartDeck" class="btn btn-primary">
               Restart Full Deck
             </button>
@@ -2111,6 +2119,20 @@
       </section>
 
       <!-- Screen 4: Past Sessions History -->
+      <section id="screenBrowse" class="hidden" aria-labelledby="browseTitle">
+        <h2 id="browseTitle">Browse deck</h2>
+        <div class="browse-tools">
+          <input type="search" id="browseQuery" aria-label="Search cards" placeholder="Search questions and answers">
+          <button type="button" class="icon-btn" id="browseBack">Back</button>
+        </div>
+        <p id="browseCount" role="status"></p>
+        <div id="browseList"></div>
+        <nav class="browse-pages" aria-label="Card pages">
+          <button type="button" class="icon-btn" id="browsePrev">Previous</button>
+          <button type="button" class="icon-btn" id="browseNext">Next</button>
+        </nav>
+      </section>
+
       <section id="screenHistory" class="history-screen hidden">
         <div class="history-header-bar">
           <div class="history-title-group">
@@ -2489,6 +2511,7 @@
                 frontHtml: frontHtml || '<p><em>(Empty front)</em></p>',
                 backHtml: backHtml || '<p><em>(No answer content)</em></p>',
                 extraHtml,
+                searchText: extractPlainText(cardEl).toLowerCase(),
                 frontText: frontText.slice(0, 220),
               });
             }
@@ -2512,6 +2535,7 @@
                   frontHtml,
                   backHtml,
                   extraHtml: '',
+                  searchText: Array.from(cells, extractPlainText).join(" ").toLowerCase(),
                   frontText: extractPlainText(cells[0]).slice(0, 220),
                 });
                 idx++;
@@ -2668,7 +2692,7 @@
 
       function openDeckMenu() {
         const origin = state.screen === 'history' ? state.previousScreen : state.screen;
-        if (origin !== 'import') resumeDeck.classList.toggle('hidden', origin !== 'study');
+        if (origin !== 'import') resumeDeck.classList.toggle('hidden', origin !== 'study' && !(origin === 'browse' && browseOrigin === 'study'));
         showScreen('import');
       }
 
@@ -2681,6 +2705,7 @@
           state.previousScreen = state.screen;
         }
         state.screen = name;
+        $('screenBrowse').classList.toggle('hidden', name !== 'browse');
         els.screenImport.classList.toggle('hidden', name !== 'import');
         els.screenStudy.classList.toggle('hidden', name !== 'study');
         els.screenSummary.classList.toggle('hidden', name !== 'summary');
@@ -3021,6 +3046,79 @@
         renderBreakdownList();
       }
 
+      function buildCardDetail(card) {
+        const d = document.createElement('div');
+        d.className = 'review-detail';
+        d.innerHTML = `
+          <div>
+            <div class="card-section-label">Question</div>
+            <div class="anki-content is-question">${card.frontHtml}</div>
+          </div>
+          <div>
+            <div class="card-section-label answer-label">Answer</div>
+            <div class="anki-content">${card.backHtml}</div>
+          </div>
+          ${card.extraHtml ? `<div><div class="card-section-label">Extra</div><div class="anki-content">${card.extraHtml}</div></div>` : ''}
+        `;
+        return d;
+      }
+
+      const browsePageSize = 20;
+      let browseOrigin = 'study';
+      let browseOffset = 0;
+      let browseMatches = [];
+
+      function renderBrowse() {
+        const end = Math.min(browseOffset + browsePageSize, browseMatches.length);
+        $('browseCount').textContent = browseMatches.length
+          ? `Cards ${browseOffset + 1}–${end} of ${browseMatches.length}`
+          : 'No matching cards';
+        $('browsePrev').disabled = browseOffset === 0;
+        $('browseNext').disabled = end === browseMatches.length;
+        const list = $('browseList');
+        list.replaceChildren();
+        for (const card of browseMatches.slice(browseOffset, end)) {
+          const article = document.createElement('article');
+          article.className = 'browse-card';
+          const title = document.createElement('h3');
+          title.textContent = `Card ${card.num}`;
+          article.append(title, buildCardDetail(card));
+          list.append(article);
+        }
+      }
+
+      function filterBrowse() {
+        const query = $('browseQuery').value.trim().toLowerCase();
+        browseMatches = query ? state.allCards.filter(card => card.searchText.includes(query)) : state.allCards;
+        browseOffset = 0;
+        renderBrowse();
+      }
+
+      document.querySelectorAll('.browse-open').forEach(button => {
+        button.addEventListener('click', () => {
+          browseOrigin = state.screen;
+          $('browseQuery').value = '';
+          filterBrowse();
+          showScreen('browse');
+          $('browseQuery').focus();
+        });
+      });
+      $('browseQuery').addEventListener('input', filterBrowse);
+      $('browseBack').addEventListener('click', () => {
+        showScreen(browseOrigin);
+        $('browseList').replaceChildren();
+        browseMatches = [];
+        document.querySelector('#screen' + (browseOrigin === 'study' ? 'Study' : 'Summary') + ' .browse-open').focus();
+      });
+      function changeBrowsePage(offset) {
+        browseOffset += offset;
+        renderBrowse();
+        $('browseQuery').focus();
+        $('browseTitle').scrollIntoView({block:'center'});
+      }
+      $('browsePrev').addEventListener('click', () => changeBrowsePage(-browsePageSize));
+      $('browseNext').addEventListener('click', () => changeBrowsePage(browsePageSize));
+
       function renderBreakdownList() {
         const filter = state.summaryFilter;
         const filtered = state.sessionCards.filter((card) => {
@@ -3094,25 +3192,8 @@
           item.appendChild(row);
 
           let detailEl = null;
-          function buildDetail() {
-            const d = document.createElement('div');
-            d.className = 'review-detail';
-            d.innerHTML = `
-              <div>
-                <div class="card-section-label">Question</div>
-                <div class="anki-content is-question">${card.frontHtml}</div>
-              </div>
-              <div>
-                <div class="card-section-label answer-label">Answer</div>
-                <div class="anki-content">${card.backHtml}</div>
-              </div>
-              ${card.extraHtml ? `<div><div class="card-section-label">Extra</div><div class="anki-content">${card.extraHtml}</div></div>` : ''}
-            `;
-            return d;
-          }
-
           if (isOpen) {
-            detailEl = buildDetail();
+            detailEl = buildCardDetail(card);
             item.appendChild(detailEl);
           }
 
@@ -3122,7 +3203,7 @@
             if (nowOpen) {
               state.expandedSummaryIds.add(card.id);
               if (!detailEl) {
-                detailEl = buildDetail();
+                detailEl = buildCardDetail(card);
                 item.appendChild(detailEl);
               }
             } else {
@@ -3786,6 +3867,7 @@
         const tag = document.activeElement && document.activeElement.tagName;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
+        if (tag === 'BUTTON' && (e.key === 'Enter' || e.key === ' ')) return;
         const key = e.key;
         const lower = key.toLowerCase();
 
