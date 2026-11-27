@@ -1,0 +1,3755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anki Flash Card Viewer</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --bg-subtle: #ebedf2;
+      --surface: #ffffff;
+      --surface-elevated: #ffffff;
+      --border: #e2e6ee;
+      --border-strong: #cdd4e0;
+      --text: #111827;
+      --text-secondary: #4b5563;
+      --text-muted: #6b7280;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-soft: rgba(37, 99, 235, 0.1);
+      --ok: #059669;
+      --ok-hover: #047857;
+      --ok-soft: rgba(5, 150, 105, 0.11);
+      --ok-border: rgba(5, 150, 105, 0.28);
+      --nok: #dc2626;
+      --nok-hover: #b91c1c;
+      --nok-soft: rgba(220, 38, 38, 0.1);
+      --nok-border: rgba(220, 38, 38, 0.28);
+      --skip: #d97706;
+      --skip-hover: #b45309;
+      --skip-soft: rgba(217, 119, 6, 0.11);
+      --skip-border: rgba(217, 119, 6, 0.3);
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+      --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.07), 0 2px 6px rgba(15, 23, 42, 0.04);
+      --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.12);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 18px;
+      --img-bg: #ffffff;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0d1016;
+      --bg-subtle: #161b24;
+      --surface: #151922;
+      --surface-elevated: #1c222e;
+      --border: #262e3d;
+      --border-strong: #374151;
+      --text: #f3f4f6;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent-hover: #60a5fa;
+      --accent-soft: rgba(59, 130, 246, 0.16);
+      --ok: #10b981;
+      --ok-hover: #34d399;
+      --ok-soft: rgba(16, 185, 129, 0.15);
+      --ok-border: rgba(16, 185, 129, 0.35);
+      --nok: #f87171;
+      --nok-hover: #ef4444;
+      --nok-soft: rgba(248, 113, 113, 0.14);
+      --nok-border: rgba(248, 113, 113, 0.35);
+      --skip: #fbbf24;
+      --skip-hover: #f59e0b;
+      --skip-soft: rgba(251, 191, 36, 0.14);
+      --skip-border: rgba(251, 191, 36, 0.35);
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+      --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.35);
+      --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.5);
+      --img-bg: #f8fafc;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: inherit;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: inherit;
+    }
+
+    button:focus-visible,
+    [tabindex]:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* App Shell */
+    .app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Header */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1 1 200px;
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.28);
+    }
+
+    .brand-text {
+      min-width: 0;
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin: 0;
+    }
+
+    .brand-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Segmented Order Toggle */
+    .segmented {
+      display: inline-flex;
+      background: var(--bg-subtle);
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      gap: 2px;
+    }
+
+    .segmented button {
+      padding: 5px 11px;
+      border-radius: 7px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+    }
+
+    .segmented button:hover:not(.active) {
+      color: var(--text);
+    }
+
+    .segmented button.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .icon-btn {
+      height: 34px;
+      padding: 0 11px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .icon-btn:hover {
+      background: var(--bg-subtle);
+      border-color: var(--border-strong);
+      color: var(--text);
+    }
+
+    .icon-btn.icon-only {
+      width: 34px;
+      padding: 0;
+      justify-content: center;
+    }
+
+    /* Progress Bar under Header */
+    .progress-track {
+      height: 4px;
+      background: var(--bg-subtle);
+      width: 100%;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .progress-seg {
+      height: 100%;
+      transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .progress-seg.ok { background: var(--ok); }
+    .progress-seg.nok { background: var(--nok); }
+    .progress-seg.skip { background: var(--skip); opacity: 0.65; }
+
+    /* Main Container */
+    .main {
+      flex: 1;
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 24px 20px 36px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ================= IMPORT SCREEN ================= */
+    .import-screen {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 0 48px;
+      gap: 24px;
+    }
+
+    .import-hero {
+      text-align: center;
+      max-width: 540px;
+    }
+
+    .import-hero h1 {
+      margin: 0 0 10px;
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+    }
+
+    .import-hero p {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 15px;
+    }
+
+    .dropzone {
+      width: 100%;
+      max-width: 560px;
+      background: var(--surface);
+      border: 2px dashed var(--border-strong);
+      border-radius: var(--radius-lg);
+      padding: 44px 28px;
+      text-align: center;
+      box-shadow: var(--shadow-md);
+      transition: border-color 0.18s, background 0.18s, transform 0.18s;
+      cursor: pointer;
+    }
+
+    .dropzone:hover,
+    .dropzone.dragover {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--surface) 94%, var(--accent));
+    }
+
+    .dropzone.dragover {
+      transform: scale(1.01);
+    }
+
+    .dropzone-icon {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 16px;
+      border-radius: 16px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: grid;
+      place-items: center;
+    }
+
+    .dropzone-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin: 0 0 6px;
+    }
+
+    .dropzone-hint {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin: 0 0 22px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 600;
+      border-radius: 11px;
+      padding: 11px 20px;
+      font-size: 14.5px;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s, border-color 0.15s;
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(37, 99, 235, 0.25);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-subtle);
+    }
+
+    .import-options {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      color: var(--text-secondary);
+      font-size: 13.5px;
+    }
+
+    .import-error {
+      max-width: 560px;
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      background: var(--nok-soft);
+      border: 1px solid var(--nok-border);
+      color: var(--nok);
+      font-size: 13.5px;
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .import-features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      width: 100%;
+      max-width: 560px;
+      margin-top: 4px;
+    }
+
+    .feature-pill {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+      font-size: 12.5px;
+      color: var(--text-secondary);
+    }
+
+    .feature-pill strong {
+      display: block;
+      color: var(--text);
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 20px;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ================= STUDY SCREEN ================= */
+    .study-screen {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      flex: 1;
+    }
+
+    .study-stats-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .stat-pills {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .pill .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+    }
+
+    .pill.ok { color: var(--ok); border-color: var(--ok-border); background: var(--ok-soft); }
+    .pill.ok .dot { background: var(--ok); }
+    .pill.nok { color: var(--nok); border-color: var(--nok-border); background: var(--nok-soft); }
+    .pill.nok .dot { background: var(--nok); }
+    .pill.skip { color: var(--skip); border-color: var(--skip-border); background: var(--skip-soft); }
+    .pill.skip .dot { background: var(--skip); }
+
+    .study-meta-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .text-btn {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding: 5px 9px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .text-btn:hover:not(:disabled) {
+      background: var(--bg-subtle);
+      color: var(--text);
+    }
+
+    .text-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Flashcard Surface */
+    .flashcard {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 300px;
+      animation: cardIn 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-header {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: color-mix(in srgb, var(--bg-subtle) 45%, var(--surface));
+    }
+
+    .card-badge-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .card-num-badge {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .revisit-badge {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--skip);
+      background: var(--skip-soft);
+      border: 1px solid var(--skip-border);
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .card-progress-label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .card-body {
+      padding: 22px 24px 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      flex: 1;
+    }
+
+    .card-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .card-section-label.answer-label {
+      color: var(--accent);
+    }
+
+    .card-divider {
+      height: 1px;
+      background: var(--border);
+      border: none;
+      margin: 2px 0;
+    }
+
+    .answer-wrapper {
+      animation: fadeReveal 0.2s ease-out;
+    }
+
+    @keyframes fadeReveal {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .reveal-prompt {
+      margin-top: auto;
+      padding: 28px 16px;
+      border-radius: var(--radius-md);
+      border: 1.5px dashed var(--border-strong);
+      background: color-mix(in srgb, var(--bg-subtle) 50%, transparent);
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+
+    .reveal-prompt:hover {
+      border-color: var(--accent);
+      color: var(--text);
+      background: var(--accent-soft);
+    }
+
+    /* Imported Anki Content Styling (scoped) */
+    .anki-content {
+      font-size: 15.5px;
+      line-height: 1.6;
+      color: var(--text);
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .anki-content.is-question {
+      font-size: 17.5px;
+      line-height: 1.5;
+    }
+
+    .anki-content * {
+      max-width: 100% !important;
+    }
+
+    .anki-content .fb {
+      padding: 0;
+    }
+
+    .anki-content .fb + .fb {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .anki-content .fl,
+    .anki-content .rs .label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .anki-content p {
+      margin: 0 0 0.55em;
+    }
+
+    .anki-content p:last-child {
+      margin-bottom: 0;
+    }
+
+    .anki-content p:empty,
+    .anki-content div:empty:not(.io-m):not(.io-o) {
+      display: none;
+    }
+
+    .anki-content ul,
+    .anki-content ol {
+      margin: 0.45em 0 0.7em;
+      padding-left: 1.45em;
+    }
+
+    .anki-content li {
+      margin-bottom: 0.3em;
+    }
+
+    .anki-content li:last-child {
+      margin-bottom: 0;
+    }
+
+    .anki-content strong, .anki-content b {
+      font-weight: 700;
+    }
+
+    .anki-content h1, .anki-content h2, .anki-content h3 {
+      margin: 0.4em 0 0.3em;
+      line-height: 1.3;
+    }
+
+    .anki-content table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 0.6em 0;
+      font-size: 0.92em;
+    }
+
+    .anki-content td,
+    .anki-content th {
+      border: 1px solid var(--border);
+      padding: 6px 9px;
+      text-align: left;
+    }
+
+    .anki-content th {
+      background: var(--bg-subtle);
+      font-weight: 600;
+    }
+
+    .anki-content a {
+      color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .anki-content img {
+      display: block;
+      max-width: 100% !important;
+      max-height: 440px;
+      width: auto !important;
+      height: auto !important;
+      object-fit: contain;
+      margin: 10px 0;
+      border-radius: 8px;
+      background: var(--img-bg);
+      padding: 4px;
+      border: 1px solid var(--border);
+      cursor: zoom-in;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .anki-content img:hover {
+      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.18);
+    }
+
+    .anki-content svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+
+    .anki-content [style*="background"],
+    .anki-content [style*="Background"],
+    .anki-content [bgcolor] {
+      background: transparent !important;
+    }
+
+    .anki-content [style*="color:white"],
+    .anki-content [style*="color: white"],
+    .anki-content [style*="color:#fff"],
+    .anki-content [style*="color: #fff"] {
+      color: inherit !important;
+    }
+
+    /* Cloze & Image Occlusion & MathJax support from Anki exports */
+    .anki-content .cz-a,
+    .anki-content .cz-h {
+      font-weight: 700;
+      color: var(--accent);
+      border-bottom: 2px solid var(--accent);
+    }
+
+    .anki-content .cz-h {
+      display: inline-block;
+      min-width: 3em;
+      text-align: center;
+    }
+
+    .anki-content .io-wrap {
+      position: relative;
+      display: inline-block;
+      line-height: 0;
+      max-width: 100%;
+    }
+
+    .anki-content .io-wrap img {
+      margin: 0;
+      padding: 0;
+      max-height: 520px !important;
+    }
+
+    .anki-content .io-wrap svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    .anki-content .io-m {
+      display: block;
+      position: absolute;
+      background: #ffeba2;
+      border: 1.5px solid #212121;
+    }
+
+    .anki-content .io-o {
+      display: block;
+      position: absolute;
+      border: 2px dashed #e0482c;
+    }
+
+    .anki-content .io-e { border-radius: 50%; }
+
+    .anki-content .io-n {
+      position: absolute;
+      background: #e0482c;
+      color: #fff !important;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+
+    .anki-content .mj {
+      display: inline-block;
+      line-height: 0;
+    }
+
+    .anki-content .mj-display {
+      display: block;
+      text-align: center;
+      margin: 0.6em 0;
+    }
+
+    /* Sticky Action Dock */
+    .action-dock {
+      position: sticky;
+      bottom: 14px;
+      z-index: 30;
+      margin-top: 6px;
+      background: color-mix(in srgb, var(--surface) 92%, transparent);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 10px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .action-row {
+      display: grid;
+      gap: 10px;
+    }
+
+    .action-row.before-reveal {
+      grid-template-columns: 1fr auto;
+    }
+
+    .action-row.after-reveal {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .grade-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 13px 16px;
+      border-radius: 11px;
+      font-size: 15px;
+      font-weight: 700;
+      border: 1.5px solid transparent;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s, color 0.15s;
+    }
+
+    .grade-btn:active {
+      transform: scale(0.985);
+    }
+
+    .grade-btn.reveal {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .grade-btn.reveal:hover {
+      background: var(--accent-hover);
+    }
+
+    .grade-btn.nok {
+      background: var(--nok-soft);
+      border-color: var(--nok-border);
+      color: var(--nok);
+    }
+
+    .grade-btn.nok:hover {
+      background: var(--nok);
+      border-color: var(--nok);
+      color: #fff;
+    }
+
+    .grade-btn.skip {
+      background: var(--skip-soft);
+      border-color: var(--skip-border);
+      color: var(--skip);
+    }
+
+    .grade-btn.skip:hover {
+      background: var(--skip);
+      border-color: var(--skip);
+      color: #fff;
+    }
+
+    .grade-btn.ok {
+      background: var(--ok-soft);
+      border-color: var(--ok-border);
+      color: var(--ok);
+    }
+
+    .grade-btn.ok:hover {
+      background: var(--ok);
+      border-color: var(--ok);
+      color: #fff;
+    }
+
+    .kbd {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: rgba(128, 128, 128, 0.16);
+      border: 1px solid rgba(128, 128, 128, 0.22);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      line-height: 1.2;
+    }
+
+    .grade-btn.reveal .kbd {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: rgba(255, 255, 255, 0.28);
+      color: #fff;
+    }
+
+    .shortcuts-hint {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* ================= SUMMARY SCREEN ================= */
+    .summary-screen {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      animation: cardIn 0.25s ease-out;
+    }
+
+    .summary-hero {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 28px 26px;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .summary-top {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .ring-wrap {
+      position: relative;
+      width: 112px;
+      height: 112px;
+      flex-shrink: 0;
+    }
+
+    .ring-wrap svg {
+      width: 112px;
+      height: 112px;
+      transform: rotate(-90deg);
+    }
+
+    .ring-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ring-pct {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ring-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .summary-headline {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .summary-headline h2 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .summary-headline p {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 14.5px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .metric-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+    }
+
+    .metric-label {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+
+    .metric-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    .metric-card.ok .metric-value { color: var(--ok); }
+    .metric-card.nok .metric-value { color: var(--nok); }
+    .metric-card.skip .metric-value { color: var(--skip); }
+
+    .summary-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-nok-retry {
+      background: var(--nok);
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(220, 38, 38, 0.24);
+    }
+
+    .btn-nok-retry:hover {
+      background: var(--nok-hover);
+    }
+
+    /* Review Breakdown List */
+    .breakdown-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .breakdown-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .breakdown-header h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .filter-tabs {
+      display: inline-flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .filter-tab {
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    .filter-tab:hover {
+      color: var(--text);
+    }
+
+    .filter-tab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .breakdown-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .review-item {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .review-item:last-child {
+      border-bottom: none;
+    }
+
+    .review-row {
+      width: 100%;
+      padding: 13px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-align: left;
+      transition: background 0.12s;
+    }
+
+    .review-row:hover {
+      background: var(--bg);
+    }
+
+    .review-num {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      min-width: 38px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .review-question {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .review-tags {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .status-tag {
+      font-size: 11.5px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .status-tag.ok { background: var(--ok-soft); color: var(--ok); border: 1px solid var(--ok-border); }
+    .status-tag.nok { background: var(--nok-soft); color: var(--nok); border: 1px solid var(--nok-border); }
+    .status-tag.unreviewed { background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border); }
+    .status-tag.skipped-tag { background: var(--skip-soft); color: var(--skip); border: 1px solid var(--skip-border); text-transform: none; }
+
+    .review-chevron {
+      color: var(--text-muted);
+      transition: transform 0.15s;
+      flex-shrink: 0;
+    }
+
+    .review-item.open .review-chevron {
+      transform: rotate(180deg);
+    }
+
+    .review-detail {
+      padding: 16px 20px 20px 68px;
+      background: color-mix(in srgb, var(--bg) 70%, var(--surface));
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .empty-filter {
+      padding: 32px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* ================= IMAGE LIGHTBOX ================= */
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(8, 10, 15, 0.92);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+      overflow: hidden;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .lightbox.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .lightbox-img {
+      max-width: 92vw;
+      max-height: 86vh;
+      object-fit: contain;
+      border-radius: 6px;
+      background: #fff;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      transform-origin: center center;
+      cursor: grab;
+    }
+
+    .lightbox-img.dragging {
+      cursor: grabbing;
+    }
+
+    .lightbox-toolbar {
+      position: fixed;
+      top: 16px;
+      right: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 101;
+    }
+
+    .lb-btn {
+      height: 36px;
+      min-width: 36px;
+      padding: 0 11px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+
+    .lb-btn:hover {
+      background: rgba(255, 255, 255, 0.26);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 92px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: #111827;
+      color: #f9fafb;
+      padding: 9px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: var(--shadow-lg);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s, transform 0.18s;
+      z-index: 90;
+      white-space: nowrap;
+      max-width: 92vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    [data-theme="dark"] .toast {
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ================= HISTORY & PAST SESSIONS ================= */
+    .count-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 19px;
+      height: 19px;
+      padding: 0 5px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .icon-btn.active-nav {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .recent-history-wrap {
+      width: 100%;
+      max-width: 560px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      margin-top: 6px;
+    }
+
+    .recent-history-header {
+      padding: 13px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .recent-history-header h2 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .recent-item {
+      width: 100%;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.12s;
+    }
+
+    .recent-item:last-child {
+      border-bottom: none;
+    }
+
+    .recent-item:hover {
+      background: var(--bg);
+    }
+
+    .recent-meta {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .recent-deck {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .recent-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .recent-score {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .score-chip {
+      font-size: 12.5px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-variant-numeric: tabular-nums;
+      background: var(--ok-soft);
+      color: var(--ok);
+      border: 1px solid var(--ok-border);
+    }
+
+    .score-chip.mid {
+      background: var(--skip-soft);
+      color: var(--skip);
+      border-color: var(--skip-border);
+    }
+
+    .score-chip.low {
+      background: var(--nok-soft);
+      color: var(--nok);
+      border-color: var(--nok-border);
+    }
+
+    .summary-saved-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .summary-delta {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11.5px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .summary-delta.up { background: var(--ok-soft); color: var(--ok); }
+    .summary-delta.down { background: var(--nok-soft); color: var(--nok); }
+    .summary-delta.same { background: var(--bg-subtle); color: var(--text-secondary); }
+
+    /* Screen 4: Past Sessions */
+    .history-screen {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      animation: cardIn 0.2s ease-out;
+    }
+
+    .history-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .history-title-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .history-title-group h2 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .history-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .deck-select {
+      height: 34px;
+      padding: 0 28px 0 11px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      max-width: 240px;
+    }
+
+    .history-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .session-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .session-card-head {
+      padding: 15px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    .session-card-head:hover {
+      background: color-mix(in srgb, var(--bg) 65%, var(--surface));
+    }
+
+    .session-card-main {
+      min-width: 0;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .session-card-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .session-deck-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .session-meta-tag {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--bg-subtle);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+
+    .session-meta-tag.subset {
+      background: var(--nok-soft);
+      color: var(--nok);
+      border-color: var(--nok-border);
+    }
+
+    .session-card-meta {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mini-bar {
+      height: 6px;
+      width: 100%;
+      max-width: 320px;
+      background: var(--bg-subtle);
+      border-radius: 999px;
+      overflow: hidden;
+      display: flex;
+      margin-top: 2px;
+    }
+
+    .mini-bar-ok { background: var(--ok); height: 100%; }
+    .mini-bar-nok { background: var(--nok); height: 100%; }
+
+    .session-card-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .session-delete-btn {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: var(--text-muted);
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .session-delete-btn:hover {
+      background: var(--nok-soft);
+      color: var(--nok);
+    }
+
+    .session-card-body {
+      border-top: 1px solid var(--border);
+      background: color-mix(in srgb, var(--bg) 55%, var(--surface));
+      padding: 14px 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .session-cards-table {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    .session-card-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+
+    .session-card-row:last-child {
+      border-bottom: none;
+    }
+
+    .session-card-row-q {
+      flex: 1;
+      min-width: 0;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-empty {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 44px 24px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    .history-empty h3 {
+      margin: 0 0 6px;
+      color: var(--text);
+      font-size: 16px;
+    }
+
+    /* Responsive */
+    @media (max-width: 680px) {
+      .topbar-inner {
+        padding: 10px 14px;
+      }
+
+      .main {
+        padding: 16px 12px 28px;
+      }
+
+      .import-features {
+        grid-template-columns: 1fr;
+      }
+
+      .card-body {
+        padding: 18px 16px 20px;
+      }
+
+      .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .history-stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .review-detail {
+        padding: 14px 16px;
+      }
+
+      .kbd {
+        display: none;
+      }
+
+      .shortcuts-hint {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="brand-icon" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="5" width="18" height="14" rx="2.5"></rect>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <h1 class="brand-title" id="headerTitle">Anki Flash Card Viewer</h1>
+            <div class="brand-sub" id="headerSub">Import an Anki HTML export to begin</div>
+          </div>
+        </div>
+
+        <div class="topbar-controls">
+          <div class="segmented" role="group" aria-label="Card order">
+            <button type="button" id="btnOrderSeq" class="active" title="Study cards in original sequential order">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+              </svg>
+              Sequential
+            </button>
+            <button type="button" id="btnOrderRand" title="Shuffle cards in random order">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 3 21 3 21 8"></polyline>
+                <line x1="4" y1="20" x2="21" y2="3"></line>
+                <polyline points="21 16 21 21 16 21"></polyline>
+                <line x1="15" y1="15" x2="21" y2="21"></line>
+                <line x1="4" y1="4" x2="9" y2="9"></line>
+              </svg>
+              Random
+            </button>
+          </div>
+
+          <button type="button" id="btnHeaderHistory" class="icon-btn" title="View past session results stored in this browser">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"></circle>
+              <polyline points="12 7 12 12 15 15"></polyline>
+            </svg>
+            History
+            <span id="historyCountBadge" class="count-badge hidden">0</span>
+          </button>
+
+          <button type="button" id="btnHeaderImport" class="icon-btn hidden" title="Import a different Anki HTML file">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Import
+          </button>
+
+          <button type="button" id="btnTheme" class="icon-btn icon-only" title="Toggle light / dark theme" aria-label="Toggle theme">
+            <svg id="iconSun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="hidden">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <svg id="iconMoon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="progress-track hidden" id="progressTrack" aria-label="Study progress">
+        <div class="progress-seg ok" id="progOk" style="width: 0%"></div>
+        <div class="progress-seg nok" id="progNok" style="width: 0%"></div>
+        <div class="progress-seg skip" id="progSkip" style="width: 0%"></div>
+      </div>
+    </header>
+
+    <input type="file" id="fileInput" accept=".html,.htm,text/html" class="hidden">
+
+    <main class="main">
+      <!-- Screen 1: Import -->
+      <section id="screenImport" class="import-screen">
+        <div class="import-hero">
+          <h1>Study your Anki HTML exports</h1>
+          <p>Select an exported Anki HTML file from your device to review cards one by one with OK, NOK, and Skip tracking. Runs 100% locally in your browser.</p>
+        </div>
+
+        <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose or drop an Anki HTML export file">
+          <div id="dropzoneIdle">
+            <div class="dropzone-icon">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <polyline points="9 15 12 12 15 15"></polyline>
+              </svg>
+            </div>
+            <div class="dropzone-title">Drop your Anki HTML export here</div>
+            <div class="dropzone-hint">Supports embedded images, lists, formulas, and large decks</div>
+            <span class="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              Choose HTML File
+            </span>
+          </div>
+
+          <div id="dropzoneLoading" class="loading-state hidden">
+            <div class="spinner"></div>
+            <div class="dropzone-title" id="loadingTitle">Loading deck…</div>
+            <div class="dropzone-hint" id="loadingHint" style="margin:0">Parsing cards from file</div>
+          </div>
+        </div>
+
+        <div id="importError" class="import-error hidden"></div>
+
+        <div class="import-features">
+          <div class="feature-pill">
+            <strong>OK / NOK / Skip</strong>
+            Skipped cards automatically return at the end of the session.
+          </div>
+          <div class="feature-pill">
+            <strong>Sequential or Random</strong>
+            Switch card order anytime — before or during study.
+          </div>
+          <div class="feature-pill">
+            <strong>Summary &amp; History</strong>
+            Results are saved in your browser so you can track progress over time.
+          </div>
+        </div>
+
+        <div id="recentHistorySection" class="recent-history-wrap hidden">
+          <div class="recent-history-header">
+            <h2>Recent Sessions</h2>
+            <button type="button" id="btnRecentViewAll" class="text-btn">View all &rarr;</button>
+          </div>
+          <div id="recentHistoryList"></div>
+        </div>
+      </section>
+
+      <!-- Screen 2: Study -->
+      <section id="screenStudy" class="study-screen hidden">
+        <div class="study-stats-bar">
+          <div class="stat-pills">
+            <span class="pill ok"><span class="dot"></span>OK: <span id="statOk">0</span></span>
+            <span class="pill nok"><span class="dot"></span>NOK: <span id="statNok">0</span></span>
+            <span class="pill skip"><span class="dot"></span>Skipped: <span id="statSkipped">0</span></span>
+            <span class="pill">Remaining: <span id="statRemaining">0</span></span>
+          </div>
+
+          <div class="study-meta-actions">
+            <button type="button" id="btnUndo" class="text-btn" disabled title="Undo last action (Z)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 14 4 9 9 4"></polyline>
+                <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+              </svg>
+              Undo
+            </button>
+            <button type="button" id="btnEndSession" class="text-btn" title="Finish now and view summary">
+              End Session
+            </button>
+          </div>
+        </div>
+
+        <article class="flashcard" id="flashcard">
+          <div class="card-header">
+            <div class="card-badge-group">
+              <span class="card-num-badge" id="cardNumBadge">Card #1</span>
+              <span class="revisit-badge hidden" id="revisitBadge">Skipped earlier</span>
+            </div>
+            <span class="card-progress-label" id="cardProgressLabel">0 / 0 done</span>
+          </div>
+
+          <div class="card-body">
+            <div>
+              <div class="card-section-label">Question</div>
+              <div id="cardQuestion" class="anki-content is-question"></div>
+            </div>
+
+            <div id="revealPrompt" class="reveal-prompt" role="button" tabindex="0">
+              Click here or press <strong>Space</strong> to reveal the answer
+            </div>
+
+            <div id="answerWrapper" class="answer-wrapper hidden">
+              <hr class="card-divider">
+              <div style="margin-top: 16px;">
+                <div class="card-section-label answer-label">Answer</div>
+                <div id="cardAnswer" class="anki-content"></div>
+              </div>
+              <div id="extraWrapper" class="hidden" style="margin-top: 16px;">
+                <hr class="card-divider">
+                <div style="margin-top: 14px;">
+                  <div class="card-section-label">Extra</div>
+                  <div id="cardExtra" class="anki-content"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <div class="action-dock">
+          <!-- Before Answer Revealed -->
+          <div id="actionsBefore" class="action-row before-reveal">
+            <button type="button" id="btnReveal" class="grade-btn reveal">
+              Show Answer
+              <span class="kbd">Space</span>
+            </button>
+            <button type="button" id="btnSkipBefore" class="grade-btn skip" title="Defer this card to the end of the deck">
+              Skip
+              <span class="kbd">S</span>
+            </button>
+          </div>
+
+          <!-- After Answer Revealed -->
+          <div id="actionsAfter" class="action-row after-reveal hidden">
+            <button type="button" id="btnNok" class="grade-btn nok" title="Not known (1 or Left Arrow)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+              NOK
+              <span class="kbd">1</span>
+            </button>
+            <button type="button" id="btnSkipAfter" class="grade-btn skip" title="Show again at the end (2 or Down Arrow)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 10 20 15 15 20"></polyline>
+                <path d="M4 4v7a4 4 0 0 0 4 4h12"></path>
+              </svg>
+              Skip
+              <span class="kbd">2</span>
+            </button>
+            <button type="button" id="btnOk" class="grade-btn ok" title="Known (3 or Right Arrow)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              OK
+              <span class="kbd">3</span>
+            </button>
+          </div>
+
+          <div class="shortcuts-hint">
+            Shortcuts: <strong>Space</strong> Reveal &middot; <strong>1 / &larr;</strong> NOK &middot; <strong>2 / S</strong> Skip &middot; <strong>3 / &rarr;</strong> OK &middot; <strong>Z</strong> Undo &middot; Click any image to zoom
+          </div>
+        </div>
+      </section>
+
+      <!-- Screen 3: Summary -->
+      <section id="screenSummary" class="summary-screen hidden">
+        <div class="summary-hero">
+          <div class="summary-top">
+            <div class="ring-wrap" aria-hidden="true">
+              <svg viewBox="0 0 112 112">
+                <circle cx="56" cy="56" r="46" fill="none" stroke="var(--bg-subtle)" stroke-width="11"></circle>
+                <circle id="ringNok" cx="56" cy="56" r="46" fill="none" stroke="var(--nok)" stroke-width="11" stroke-dasharray="289.03" stroke-dashoffset="289.03" stroke-linecap="butt"></circle>
+                <circle id="ringOk" cx="56" cy="56" r="46" fill="none" stroke="var(--ok)" stroke-width="11" stroke-dasharray="289.03" stroke-dashoffset="289.03" stroke-linecap="round"></circle>
+              </svg>
+              <div class="ring-center">
+                <span class="ring-pct" id="summaryPct">0%</span>
+                <span class="ring-label">OK</span>
+              </div>
+            </div>
+
+            <div class="summary-headline">
+              <h2 id="summaryTitle">Session Complete</h2>
+              <p id="summarySubtitle"></p>
+              <div id="summarySavedNote" class="summary-saved-note hidden"></div>
+            </div>
+          </div>
+
+          <div class="summary-grid">
+            <div class="metric-card ok">
+              <div class="metric-label">OK</div>
+              <div class="metric-value" id="sumOk">0</div>
+              <div class="metric-sub" id="sumOkPct">0%</div>
+            </div>
+            <div class="metric-card nok">
+              <div class="metric-label">NOK</div>
+              <div class="metric-value" id="sumNok">0</div>
+              <div class="metric-sub" id="sumNokPct">0%</div>
+            </div>
+            <div class="metric-card skip">
+              <div class="metric-label">Skips Taken</div>
+              <div class="metric-value" id="sumSkips">0</div>
+              <div class="metric-sub" id="sumSkipsSub">0 cards deferred</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Duration</div>
+              <div class="metric-value" id="sumDuration">0:00</div>
+              <div class="metric-sub" id="sumReviewedSub">0 reviewed</div>
+            </div>
+          </div>
+
+          <div class="summary-actions">
+            <button type="button" id="btnStudyNok" class="btn btn-nok-retry hidden">
+              Study NOK Cards (<span id="studyNokCount">0</span>)
+            </button>
+            <button type="button" id="btnRestartDeck" class="btn btn-primary">
+              Restart Full Deck
+            </button>
+            <button type="button" id="btnSummaryHistory" class="btn btn-secondary">
+              Past Sessions
+            </button>
+            <button type="button" id="btnSummaryImport" class="btn btn-secondary">
+              Import Another File
+            </button>
+          </div>
+        </div>
+
+        <div class="breakdown-card">
+          <div class="breakdown-header">
+            <h3>Card Breakdown</h3>
+            <div class="filter-tabs" id="filterTabs">
+              <button type="button" class="filter-tab active" data-filter="all">All</button>
+              <button type="button" class="filter-tab" data-filter="nok">NOK</button>
+              <button type="button" class="filter-tab" data-filter="ok">OK</button>
+              <button type="button" class="filter-tab hidden" data-filter="unreviewed" id="tabUnreviewed">Unreviewed</button>
+            </div>
+          </div>
+          <div id="breakdownList" class="breakdown-list"></div>
+        </div>
+      </section>
+
+      <!-- Screen 4: Past Sessions History -->
+      <section id="screenHistory" class="history-screen hidden">
+        <div class="history-header-bar">
+          <div class="history-title-group">
+            <button type="button" id="btnHistoryBack" class="icon-btn" title="Return to previous view">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+              Back
+            </button>
+            <h2>Past Sessions</h2>
+          </div>
+
+          <div class="history-toolbar">
+            <select id="historyDeckFilter" class="deck-select" aria-label="Filter sessions by deck">
+              <option value="__all__">All Decks</option>
+            </select>
+            <button type="button" id="btnExportHistory" class="icon-btn" title="Download session history as JSON">
+              Export JSON
+            </button>
+            <button type="button" id="btnClearHistory" class="icon-btn" title="Clear all stored sessions">
+              Clear All
+            </button>
+          </div>
+        </div>
+
+        <div id="historyStatsGrid" class="history-stats-grid hidden">
+          <div class="metric-card">
+            <div class="metric-label">Sessions</div>
+            <div class="metric-value" id="histTotalSessions">0</div>
+            <div class="metric-sub" id="histDecksSub">0 decks</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Cards Graded</div>
+            <div class="metric-value" id="histTotalGraded">0</div>
+            <div class="metric-sub" id="histOkNokSub">0 OK &middot; 0 NOK</div>
+          </div>
+          <div class="metric-card ok">
+            <div class="metric-label">Average Score</div>
+            <div class="metric-value" id="histAvgPct">0%</div>
+            <div class="metric-sub">across shown sessions</div>
+          </div>
+        </div>
+
+        <div id="historyList" class="history-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Image Lightbox -->
+  <div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer">
+    <div class="lightbox-toolbar">
+      <button type="button" class="lb-btn" id="lbZoomOut" title="Zoom out (-)">&minus;</button>
+      <button type="button" class="lb-btn" id="lbZoomReset" title="Reset zoom (0)">100%</button>
+      <button type="button" class="lb-btn" id="lbZoomIn" title="Zoom in (+)">+</button>
+      <button type="button" class="lb-btn" id="lbClose" title="Close (Esc)">&times;</button>
+    </div>
+    <img id="lightboxImg" class="lightbox-img" alt="Zoomed card image">
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // ================= STATE =================
+      const state = {
+        deckTitle: '',
+        deckSubtitle: '',
+        fileName: '',
+        allCards: [],         // [{ id, num, orderIndex, frontHtml, backHtml, extraHtml, frontText }]
+        cardById: new Map(),
+        sessionCards: [],
+        orderMode: 'sequential', // 'sequential' | 'random'
+        mainQueue: [],
+        skippedQueue: [],
+        currentCardId: null,
+        currentIsSkipped: false,
+        revealed: false,
+        results: {},          // { [cardId]: 'ok' | 'nok' }
+        skipCounts: {},       // { [cardId]: number }
+        totalSkips: 0,
+        history: [],
+        startedAt: null,
+        finishedAt: null,
+        screen: 'import',     // 'import' | 'study' | 'summary' | 'history'
+        previousScreen: 'import',
+        summaryFilter: 'all',
+        expandedSummaryIds: new Set(),
+        sessionSaved: false,
+        savedSessions: [],
+        historyDeckFilter: '__all__',
+        expandedHistoryIds: new Set(),
+        historyCardFilters: {}, // { [sessionId]: 'all' | 'nok' | 'ok' | 'unreviewed' }
+      };
+
+      // ================= DOM REFS =================
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        headerTitle: $('headerTitle'),
+        headerSub: $('headerSub'),
+        btnOrderSeq: $('btnOrderSeq'),
+        btnOrderRand: $('btnOrderRand'),
+        btnHeaderHistory: $('btnHeaderHistory'),
+        historyCountBadge: $('historyCountBadge'),
+        btnHeaderImport: $('btnHeaderImport'),
+        btnTheme: $('btnTheme'),
+        iconSun: $('iconSun'),
+        iconMoon: $('iconMoon'),
+        progressTrack: $('progressTrack'),
+        progOk: $('progOk'),
+        progNok: $('progNok'),
+        progSkip: $('progSkip'),
+        fileInput: $('fileInput'),
+
+        screenImport: $('screenImport'),
+        dropzone: $('dropzone'),
+        dropzoneIdle: $('dropzoneIdle'),
+        dropzoneLoading: $('dropzoneLoading'),
+        loadingTitle: $('loadingTitle'),
+        loadingHint: $('loadingHint'),
+        importError: $('importError'),
+        recentHistorySection: $('recentHistorySection'),
+        recentHistoryList: $('recentHistoryList'),
+        btnRecentViewAll: $('btnRecentViewAll'),
+
+        screenStudy: $('screenStudy'),
+        statOk: $('statOk'),
+        statNok: $('statNok'),
+        statSkipped: $('statSkipped'),
+        statRemaining: $('statRemaining'),
+        btnUndo: $('btnUndo'),
+        btnEndSession: $('btnEndSession'),
+        flashcard: $('flashcard'),
+        cardNumBadge: $('cardNumBadge'),
+        revisitBadge: $('revisitBadge'),
+        cardProgressLabel: $('cardProgressLabel'),
+        cardQuestion: $('cardQuestion'),
+        revealPrompt: $('revealPrompt'),
+        answerWrapper: $('answerWrapper'),
+        cardAnswer: $('cardAnswer'),
+        extraWrapper: $('extraWrapper'),
+        cardExtra: $('cardExtra'),
+        actionsBefore: $('actionsBefore'),
+        actionsAfter: $('actionsAfter'),
+        btnReveal: $('btnReveal'),
+        btnSkipBefore: $('btnSkipBefore'),
+        btnNok: $('btnNok'),
+        btnSkipAfter: $('btnSkipAfter'),
+        btnOk: $('btnOk'),
+
+        screenSummary: $('screenSummary'),
+        ringOk: $('ringOk'),
+        ringNok: $('ringNok'),
+        summaryPct: $('summaryPct'),
+        summaryTitle: $('summaryTitle'),
+        summarySubtitle: $('summarySubtitle'),
+        summarySavedNote: $('summarySavedNote'),
+        sumOk: $('sumOk'),
+        sumOkPct: $('sumOkPct'),
+        sumNok: $('sumNok'),
+        sumNokPct: $('sumNokPct'),
+        sumSkips: $('sumSkips'),
+        sumSkipsSub: $('sumSkipsSub'),
+        sumDuration: $('sumDuration'),
+        sumReviewedSub: $('sumReviewedSub'),
+        btnStudyNok: $('btnStudyNok'),
+        studyNokCount: $('studyNokCount'),
+        btnRestartDeck: $('btnRestartDeck'),
+        btnSummaryHistory: $('btnSummaryHistory'),
+        btnSummaryImport: $('btnSummaryImport'),
+        filterTabs: $('filterTabs'),
+        tabUnreviewed: $('tabUnreviewed'),
+        breakdownList: $('breakdownList'),
+
+        screenHistory: $('screenHistory'),
+        btnHistoryBack: $('btnHistoryBack'),
+        historyDeckFilter: $('historyDeckFilter'),
+        btnExportHistory: $('btnExportHistory'),
+        btnClearHistory: $('btnClearHistory'),
+        historyStatsGrid: $('historyStatsGrid'),
+        histTotalSessions: $('histTotalSessions'),
+        histDecksSub: $('histDecksSub'),
+        histTotalGraded: $('histTotalGraded'),
+        histOkNokSub: $('histOkNokSub'),
+        histAvgPct: $('histAvgPct'),
+        historyList: $('historyList'),
+
+        lightbox: $('lightbox'),
+        lightboxImg: $('lightboxImg'),
+        lbZoomOut: $('lbZoomOut'),
+        lbZoomReset: $('lbZoomReset'),
+        lbZoomIn: $('lbZoomIn'),
+        lbClose: $('lbClose'),
+        toast: $('toast'),
+      };
+
+      // ================= THEME =================
+      function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        const dark = theme === 'dark';
+        els.iconSun.classList.toggle('hidden', !dark);
+        els.iconMoon.classList.toggle('hidden', dark);
+        try { localStorage.setItem('anki-viewer-theme', theme); } catch (_) {}
+      }
+
+      function initTheme() {
+        let saved = null;
+        try { saved = localStorage.getItem('anki-viewer-theme'); } catch (_) {}
+        if (saved === 'dark' || saved === 'light') {
+          applyTheme(saved);
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          applyTheme('dark');
+        } else {
+          applyTheme('light');
+        }
+      }
+
+      els.btnTheme.addEventListener('click', () => {
+        const cur = document.documentElement.getAttribute('data-theme');
+        applyTheme(cur === 'dark' ? 'light' : 'dark');
+      });
+
+      // ================= TOAST =================
+      let toastTimer = null;
+      function showToast(msg) {
+        els.toast.textContent = msg;
+        els.toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          els.toast.classList.remove('show');
+        }, 2200);
+      }
+
+      // ================= HELPERS =================
+      function shuffleArray(arr) {
+        const a = arr.slice();
+        for (let i = a.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          const tmp = a[i];
+          a[i] = a[j];
+          a[j] = tmp;
+        }
+        return a;
+      }
+
+      function formatDuration(ms) {
+        const totalSec = Math.max(0, Math.round(ms / 1000));
+        const mins = Math.floor(totalSec / 60);
+        const secs = totalSec % 60;
+        if (mins >= 60) {
+          const hrs = Math.floor(mins / 60);
+          const remMins = mins % 60;
+          return `${hrs}:${String(remMins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+        return `${mins}:${String(secs).padStart(2, '0')}`;
+      }
+
+      function sanitizeNode(root) {
+        if (!root) return '';
+        const clone = root.cloneNode(true);
+        // Remove potentially unsafe or irrelevant elements
+        clone.querySelectorAll('script, iframe, object, embed, link, style, noscript').forEach((n) => n.remove());
+        // Strip inline event handlers and javascript: links
+        const walker = document.createTreeWalker(clone, NodeFilter.SHOW_ELEMENT);
+        let node = clone;
+        while (node) {
+          if (node.attributes) {
+            for (let i = node.attributes.length - 1; i >= 0; i--) {
+              const attr = node.attributes[i];
+              const name = attr.name.toLowerCase();
+              const val = (attr.value || '').trim().toLowerCase();
+              if (name.startsWith('on')) {
+                node.removeAttribute(attr.name);
+              } else if ((name === 'href' || name === 'src') && val.startsWith('javascript:')) {
+                node.removeAttribute(attr.name);
+              }
+            }
+          }
+          node = walker.nextNode();
+        }
+        return clone.innerHTML.trim();
+      }
+
+      function extractPlainText(el) {
+        if (!el) return '';
+        const text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        if (text) return text;
+        const img = el.querySelector('img');
+        if (img) return img.getAttribute('alt') || '[Image Card]';
+        return '[Card]';
+      }
+
+      // ================= ANKI HTML PARSER =================
+      function parseAnkiHtml(rawHtml, fileName) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(rawHtml, 'text/html');
+
+        const titleEl = doc.querySelector('h1.doc-title') || doc.querySelector('h1') || doc.querySelector('title');
+        const subEl = doc.querySelector('.sub');
+        const fallbackTitle = (fileName || 'Anki Deck').replace(/\.(html?|txt)$/i, '');
+
+        const deckTitle = (titleEl && titleEl.textContent.trim()) || fallbackTitle;
+        const deckSubtitle = (subEl && subEl.textContent.trim()) || '';
+
+        const cards = [];
+
+        // Strategy 1: .card elements (standard Anki HTML/PDF export format)
+        const cardEls = doc.querySelectorAll('.card');
+        if (cardEls.length > 0) {
+          cardEls.forEach((cardEl, idx) => {
+            const rawNum = cardEl.getAttribute('data-u');
+            const cnumEl = cardEl.querySelector('.cnum');
+            let num = idx + 1;
+            if (rawNum && /^\d+$/.test(rawNum.trim())) {
+              num = parseInt(rawNum.trim(), 10);
+            } else if (cnumEl) {
+              const m = cnumEl.textContent.match(/\d+/);
+              if (m) num = parseInt(m[0], 10);
+            }
+
+            const secQ = cardEl.querySelector('.sec-q');
+            const secA = cardEl.querySelector('.sec-a');
+            const secX = cardEl.querySelector('.sec-x');
+
+            let frontHtml = '';
+            let backHtml = '';
+            let extraHtml = '';
+            let frontText = '';
+
+            if (secQ || secA) {
+              frontHtml = sanitizeNode(secQ);
+              backHtml = sanitizeNode(secA);
+              extraHtml = sanitizeNode(secX);
+              frontText = extractPlainText(secQ);
+            } else {
+              const rsEls = cardEl.querySelectorAll('.rs');
+              const fbEls = cardEl.querySelectorAll('.fb');
+              if (rsEls.length >= 2) {
+                frontHtml = sanitizeNode(rsEls[0]);
+                backHtml = Array.from(rsEls).slice(1).map(sanitizeNode).join('');
+                frontText = extractPlainText(rsEls[0]);
+              } else if (fbEls.length >= 2) {
+                frontHtml = sanitizeNode(fbEls[0]);
+                backHtml = Array.from(fbEls).slice(1).map(sanitizeNode).join('');
+                frontText = extractPlainText(fbEls[0]);
+              } else {
+                const hr = cardEl.querySelector('hr');
+                if (hr) {
+                  const frontWrap = document.createElement('div');
+                  const backWrap = document.createElement('div');
+                  let seenHr = false;
+                  Array.from(cardEl.childNodes).forEach((ch) => {
+                    if (ch === hr) { seenHr = true; return; }
+                    if (ch.nodeType === 1 && ch.classList.contains('cnum')) return;
+                    (seenHr ? backWrap : frontWrap).appendChild(ch.cloneNode(true));
+                  });
+                  frontHtml = sanitizeNode(frontWrap);
+                  backHtml = sanitizeNode(backWrap);
+                  frontText = extractPlainText(frontWrap);
+                } else {
+                  frontHtml = sanitizeNode(cardEl);
+                  backHtml = '';
+                  frontText = extractPlainText(cardEl);
+                }
+              }
+            }
+
+            if (frontHtml || backHtml) {
+              cards.push({
+                id: `card-${idx}`,
+                num,
+                orderIndex: idx,
+                frontHtml: frontHtml || '<p><em>(Empty front)</em></p>',
+                backHtml: backHtml || '<p><em>(No answer content)</em></p>',
+                extraHtml,
+                frontText: frontText.slice(0, 220),
+              });
+            }
+          });
+        }
+
+        // Strategy 2: Fallback for table-based Anki HTML exports
+        if (cards.length === 0) {
+          const rows = doc.querySelectorAll('table tr');
+          let idx = 0;
+          rows.forEach((tr) => {
+            const cells = tr.querySelectorAll('td');
+            if (cells.length >= 2) {
+              const frontHtml = sanitizeNode(cells[0]);
+              const backHtml = Array.from(cells).slice(1).map(sanitizeNode).join('<hr class="card-divider">');
+              if (frontHtml || backHtml) {
+                cards.push({
+                  id: `card-${idx}`,
+                  num: idx + 1,
+                  orderIndex: idx,
+                  frontHtml,
+                  backHtml,
+                  extraHtml: '',
+                  frontText: extractPlainText(cells[0]).slice(0, 220),
+                });
+                idx++;
+              }
+            }
+          });
+        }
+
+        return { deckTitle, deckSubtitle, cards };
+      }
+
+      // ================= FILE IMPORT =================
+      function setImportError(message) {
+        if (!message) {
+          els.importError.classList.add('hidden');
+          els.importError.textContent = '';
+        } else {
+          els.importError.textContent = message;
+          els.importError.classList.remove('hidden');
+        }
+      }
+
+      function setLoading(isLoading, fileName, fileSizeBytes) {
+        els.dropzoneIdle.classList.toggle('hidden', isLoading);
+        els.dropzoneLoading.classList.toggle('hidden', !isLoading);
+        if (isLoading) {
+          const mb = fileSizeBytes ? ` (${(fileSizeBytes / (1024 * 1024)).toFixed(1)} MB)` : '';
+          els.loadingTitle.textContent = `Loading ${fileName || 'deck'}…`;
+          els.loadingHint.textContent = `Parsing cards${mb} locally in your browser`;
+        }
+      }
+
+      async function handleFile(file) {
+        if (!file) return;
+        setImportError('');
+        showScreen('import');
+        setLoading(true, file.name, file.size);
+
+        try {
+          // Allow loading spinner to render before reading/parsing large files
+          await new Promise((resolve) => setTimeout(resolve, 40));
+
+          const rawHtml = await file.text();
+          const parsed = parseAnkiHtml(rawHtml, file.name);
+
+          if (!parsed.cards || parsed.cards.length === 0) {
+            setLoading(false);
+            setImportError('No flashcards were found in this HTML file. Please select an Anki HTML export containing card elements.');
+            return;
+          }
+
+          state.deckTitle = parsed.deckTitle;
+          state.deckSubtitle = parsed.deckSubtitle;
+          state.fileName = file.name;
+          state.allCards = parsed.cards;
+          state.cardById = new Map(parsed.cards.map((c) => [c.id, c]));
+
+          setLoading(false);
+          startSession(state.allCards);
+          showToast(`Loaded ${parsed.cards.length} cards`);
+        } catch (err) {
+          console.error(err);
+          setLoading(false);
+          setImportError(`Could not read file: ${err && err.message ? err.message : 'Unknown error'}`);
+        } finally {
+          els.fileInput.value = '';
+        }
+      }
+
+      els.dropzone.addEventListener('click', () => {
+        if (els.dropzoneLoading.classList.contains('hidden')) {
+          els.fileInput.click();
+        }
+      });
+
+      els.dropzone.addEventListener('keydown', (e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && els.dropzoneLoading.classList.contains('hidden')) {
+          e.preventDefault();
+          els.fileInput.click();
+        }
+      });
+
+      els.dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        els.dropzone.classList.add('dragover');
+      });
+
+      els.dropzone.addEventListener('dragleave', () => {
+        els.dropzone.classList.remove('dragover');
+      });
+
+      els.dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        els.dropzone.classList.remove('dragover');
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file) handleFile(file);
+      });
+
+      els.fileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) handleFile(file);
+      });
+
+      els.btnHeaderImport.addEventListener('click', () => els.fileInput.click());
+      els.btnSummaryImport.addEventListener('click', () => els.fileInput.click());
+
+      // ================= SESSION MANAGEMENT =================
+      function showScreen(name) {
+        if (state.screen !== 'history' && name === 'history') {
+          state.previousScreen = state.screen;
+        }
+        state.screen = name;
+        els.screenImport.classList.toggle('hidden', name !== 'import');
+        els.screenStudy.classList.toggle('hidden', name !== 'study');
+        els.screenSummary.classList.toggle('hidden', name !== 'summary');
+        els.screenHistory.classList.toggle('hidden', name !== 'history');
+        els.btnHeaderImport.classList.toggle('hidden', name === 'import');
+        els.btnHeaderHistory.classList.toggle('active-nav', name === 'history');
+        els.progressTrack.classList.toggle('hidden', name !== 'study');
+        if (name === 'import') {
+          renderRecentSessions();
+        }
+      }
+
+      function updateHeaderInfo() {
+        if (state.allCards.length === 0) {
+          els.headerTitle.textContent = 'Anki Flash Card Viewer';
+          els.headerSub.textContent = 'Import an Anki HTML export to begin';
+          return;
+        }
+        els.headerTitle.textContent = state.deckTitle;
+        const total = state.sessionCards.length;
+        const subsetNote = total < state.allCards.length ? ` (NOK review · ${total} of ${state.allCards.length})` : ` (${total} cards)`;
+        els.headerSub.textContent = (state.deckSubtitle || state.fileName) + subsetNote;
+      }
+
+      function startSession(cards) {
+        state.sessionCards = cards.slice();
+        const ids = cards.map((c) => c.id);
+        state.mainQueue = state.orderMode === 'random' ? shuffleArray(ids) : ids;
+        state.skippedQueue = [];
+        state.currentCardId = null;
+        state.currentIsSkipped = false;
+        state.revealed = false;
+        state.results = {};
+        state.skipCounts = {};
+        state.totalSkips = 0;
+        state.history = [];
+        state.startedAt = Date.now();
+        state.finishedAt = null;
+        state.sessionSaved = false;
+        state.summaryFilter = 'all';
+        state.expandedSummaryIds.clear();
+
+        updateHeaderInfo();
+        showScreen('study');
+        pullNextCard();
+      }
+
+      function pullNextCard() {
+        if (state.mainQueue.length > 0) {
+          state.currentCardId = state.mainQueue.shift();
+          state.currentIsSkipped = false;
+          state.revealed = false;
+          renderStudy();
+        } else if (state.skippedQueue.length > 0) {
+          state.currentCardId = state.skippedQueue.shift();
+          state.currentIsSkipped = true;
+          state.revealed = false;
+          renderStudy();
+        } else {
+          state.currentCardId = null;
+          state.finishedAt = Date.now();
+          recordCurrentSession();
+          renderSummary();
+          showScreen('summary');
+        }
+      }
+
+      function saveSnapshot() {
+        state.history.push({
+          mainQueue: state.mainQueue.slice(),
+          skippedQueue: state.skippedQueue.slice(),
+          currentCardId: state.currentCardId,
+          currentIsSkipped: state.currentIsSkipped,
+          revealed: state.revealed,
+          results: { ...state.results },
+          skipCounts: { ...state.skipCounts },
+          totalSkips: state.totalSkips,
+        });
+        if (state.history.length > 500) {
+          state.history.shift();
+        }
+      }
+
+      function undoLast() {
+        if (state.history.length === 0) return;
+        const snap = state.history.pop();
+        state.mainQueue = snap.mainQueue;
+        state.skippedQueue = snap.skippedQueue;
+        state.currentCardId = snap.currentCardId;
+        state.currentIsSkipped = snap.currentIsSkipped;
+        state.revealed = snap.revealed;
+        state.results = snap.results;
+        state.skipCounts = snap.skipCounts;
+        state.totalSkips = snap.totalSkips;
+        if (state.screen !== 'study') {
+          showScreen('study');
+        }
+        renderStudy();
+        showToast('Undid last action');
+      }
+
+      function revealAnswer() {
+        if (state.screen !== 'study' || state.revealed || !state.currentCardId) return;
+        state.revealed = true;
+        renderCardRevealState();
+      }
+
+      function gradeCurrent(verdict) {
+        if (state.screen !== 'study' || !state.currentCardId) return;
+        saveSnapshot();
+        state.results[state.currentCardId] = verdict;
+        pullNextCard();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function skipCurrent() {
+        if (state.screen !== 'study' || !state.currentCardId) return;
+        const onlyOneLeft = state.mainQueue.length === 0 && state.skippedQueue.length === 0;
+        saveSnapshot();
+        const id = state.currentCardId;
+        state.skipCounts[id] = (state.skipCounts[id] || 0) + 1;
+        state.totalSkips += 1;
+        state.skippedQueue.push(id);
+        pullNextCard();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (onlyOneLeft) {
+          showToast('Only 1 skipped card remaining — mark OK or NOK to finish');
+        }
+      }
+
+      function endSessionEarly() {
+        if (state.screen !== 'study') return;
+        state.finishedAt = Date.now();
+        recordCurrentSession();
+        renderSummary();
+        showScreen('summary');
+      }
+
+      // ================= ORDER TOGGLE =================
+      function setOrderMode(mode) {
+        if (state.orderMode === mode) return;
+        state.orderMode = mode;
+        els.btnOrderSeq.classList.toggle('active', mode === 'sequential');
+        els.btnOrderRand.classList.toggle('active', mode === 'random');
+
+        if (state.screen === 'study' && state.currentCardId) {
+          const sortByOriginal = (ids) =>
+            ids.slice().sort((a, b) => state.cardById.get(a).orderIndex - state.cardById.get(b).orderIndex);
+
+          if (!state.revealed && !state.currentIsSkipped) {
+            // Reorder the entire remaining unseen pool including current unflipped card
+            const pool = [state.currentCardId, ...state.mainQueue];
+            state.mainQueue = mode === 'random' ? shuffleArray(pool) : sortByOriginal(pool);
+            state.skippedQueue = mode === 'random' ? shuffleArray(state.skippedQueue) : sortByOriginal(state.skippedQueue);
+            state.currentCardId = state.mainQueue.shift();
+            renderStudy();
+          } else {
+            // Keep current card on screen (already revealed or revisiting skipped); reorder upcoming queue
+            state.mainQueue = mode === 'random' ? shuffleArray(state.mainQueue) : sortByOriginal(state.mainQueue);
+            state.skippedQueue = mode === 'random' ? shuffleArray(state.skippedQueue) : sortByOriginal(state.skippedQueue);
+          }
+        }
+
+        showToast(mode === 'random' ? 'Order: Random (shuffled)' : 'Order: Sequential');
+      }
+
+      els.btnOrderSeq.addEventListener('click', (e) => { e.currentTarget.blur(); setOrderMode('sequential'); });
+      els.btnOrderRand.addEventListener('click', (e) => { e.currentTarget.blur(); setOrderMode('random'); });
+
+      // ================= RENDER STUDY =================
+      function countResults() {
+        let ok = 0;
+        let nok = 0;
+        for (const id of Object.keys(state.results)) {
+          if (state.results[id] === 'ok') ok++;
+          else if (state.results[id] === 'nok') nok++;
+        }
+        return { ok, nok, done: ok + nok };
+      }
+
+      function renderStudy() {
+        const card = state.cardById.get(state.currentCardId);
+        if (!card) return;
+
+        const { ok, nok, done } = countResults();
+        const total = state.sessionCards.length;
+        const pendingSkipped = state.skippedQueue.length + (state.currentIsSkipped ? 1 : 0);
+        const remaining = total - done;
+
+        els.statOk.textContent = ok;
+        els.statNok.textContent = nok;
+        els.statSkipped.textContent = pendingSkipped;
+        els.statRemaining.textContent = remaining;
+        els.btnUndo.disabled = state.history.length === 0;
+
+        // Progress bar
+        const pctOk = total ? (ok / total) * 100 : 0;
+        const pctNok = total ? (nok / total) * 100 : 0;
+        const pctSkip = total ? (pendingSkipped / total) * 100 : 0;
+        els.progOk.style.width = `${pctOk}%`;
+        els.progNok.style.width = `${pctNok}%`;
+        els.progSkip.style.width = `${Math.min(pctSkip, Math.max(0, 100 - pctOk - pctNok))}%`;
+
+        // Card header
+        els.cardNumBadge.textContent = `Card #${card.num}`;
+        const skipCount = state.skipCounts[card.id] || 0;
+        if (state.currentIsSkipped) {
+          els.revisitBadge.textContent = skipCount > 1 ? `Skipped ${skipCount}× · Revisiting` : 'Skipped earlier · Revisiting';
+          els.revisitBadge.classList.remove('hidden');
+        } else {
+          els.revisitBadge.classList.add('hidden');
+        }
+        els.cardProgressLabel.textContent = `${done} / ${total} graded`;
+
+        // Retrigger subtle card entrance animation
+        els.flashcard.style.animation = 'none';
+        void els.flashcard.offsetWidth;
+        els.flashcard.style.animation = '';
+
+        // Populate card HTML
+        els.cardQuestion.innerHTML = card.frontHtml;
+        els.cardAnswer.innerHTML = card.backHtml;
+
+        if (card.extraHtml) {
+          els.cardExtra.innerHTML = card.extraHtml;
+          els.extraWrapper.classList.remove('hidden');
+        } else {
+          els.cardExtra.innerHTML = '';
+          els.extraWrapper.classList.add('hidden');
+        }
+
+        renderCardRevealState();
+      }
+
+      function renderCardRevealState() {
+        const rev = state.revealed;
+        els.revealPrompt.classList.toggle('hidden', rev);
+        els.answerWrapper.classList.toggle('hidden', !rev);
+        els.actionsBefore.classList.toggle('hidden', rev);
+        els.actionsAfter.classList.toggle('hidden', !rev);
+      }
+
+      els.btnReveal.addEventListener('click', revealAnswer);
+      els.revealPrompt.addEventListener('click', revealAnswer);
+      els.revealPrompt.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          revealAnswer();
+        }
+      });
+      els.btnSkipBefore.addEventListener('click', skipCurrent);
+      els.btnSkipAfter.addEventListener('click', skipCurrent);
+      els.btnNok.addEventListener('click', () => gradeCurrent('nok'));
+      els.btnOk.addEventListener('click', () => gradeCurrent('ok'));
+      els.btnUndo.addEventListener('click', undoLast);
+      els.btnEndSession.addEventListener('click', endSessionEarly);
+
+      // ================= RENDER SUMMARY =================
+      function renderSummary() {
+        const { ok, nok, done } = countResults();
+        const total = state.sessionCards.length;
+        const unreviewed = total - done;
+        const okPct = done > 0 ? Math.round((ok / done) * 100) : 0;
+        const nokPct = done > 0 ? Math.round((nok / done) * 100) : 0;
+        const uniqueSkipped = Object.keys(state.skipCounts).length;
+        const durationMs = (state.finishedAt || Date.now()) - (state.startedAt || Date.now());
+
+        // Donut ring (circumference = 2 * PI * 46 = 289.0265)
+        const C = 289.03;
+        const okLen = done > 0 ? (ok / done) * C : 0;
+        const nokLen = done > 0 ? (nok / done) * C : 0;
+        els.ringOk.style.strokeDasharray = `${okLen} ${C}`;
+        els.ringOk.style.strokeDashoffset = '0';
+        els.ringNok.style.strokeDasharray = `${nokLen} ${C}`;
+        els.ringNok.style.strokeDashoffset = `${-okLen}`;
+
+        els.summaryPct.textContent = `${okPct}%`;
+        els.summaryTitle.textContent = unreviewed === 0 ? 'Session Complete' : 'Session Summary';
+
+        if (done === 0) {
+          els.summarySubtitle.textContent = `No cards graded yet in ${state.deckTitle}.`;
+        } else if (nok === 0 && unreviewed === 0) {
+          els.summarySubtitle.textContent = `Perfect run! You marked all ${ok} cards OK in ${state.deckTitle}.`;
+        } else if (unreviewed > 0) {
+          els.summarySubtitle.textContent = `You graded ${done} of ${total} cards (${unreviewed} remaining unreviewed).`;
+        } else {
+          els.summarySubtitle.textContent = `You completed all ${total} cards in ${state.deckTitle}. ${nok} card${nok === 1 ? '' : 's'} marked NOK for review.`;
+        }
+
+        // Show saved-to-history confirmation & comparison against previous session of same deck
+        if (state.sessionSaved && done > 0) {
+          const prevSameDeck = state.savedSessions.find((s, i) => i > 0 && s.deckTitle === state.deckTitle);
+          let deltaHtml = '';
+          if (prevSameDeck) {
+            const diff = okPct - prevSameDeck.okPct;
+            const cls = diff > 0 ? 'up' : diff < 0 ? 'down' : 'same';
+            const sign = diff > 0 ? '+' : '';
+            deltaHtml = `<span class="summary-delta ${cls}">${sign}${diff}% vs previous (${prevSameDeck.okPct}%)</span>`;
+          }
+          els.summarySavedNote.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            Saved to browser history ${deltaHtml}
+          `;
+          els.summarySavedNote.classList.remove('hidden');
+        } else {
+          els.summarySavedNote.classList.add('hidden');
+          els.summarySavedNote.innerHTML = '';
+        }
+
+        els.sumOk.textContent = ok;
+        els.sumOkPct.textContent = `${okPct}% of graded`;
+        els.sumNok.textContent = nok;
+        els.sumNokPct.textContent = `${nokPct}% of graded`;
+        els.sumSkips.textContent = state.totalSkips;
+        els.sumSkipsSub.textContent = `${uniqueSkipped} card${uniqueSkipped === 1 ? '' : 's'} deferred`;
+        els.sumDuration.textContent = formatDuration(durationMs);
+        els.sumReviewedSub.textContent = `${done} of ${total} graded`;
+
+        // NOK retry button
+        els.studyNokCount.textContent = nok;
+        els.btnStudyNok.classList.toggle('hidden', nok === 0);
+
+        // Unreviewed filter tab
+        els.tabUnreviewed.classList.toggle('hidden', unreviewed === 0);
+        if (state.summaryFilter === 'unreviewed' && unreviewed === 0) {
+          state.summaryFilter = 'all';
+        }
+
+        // Update filter tab counts & active state
+        const tabCounts = { all: total, nok, ok, unreviewed };
+        const tabLabels = { all: 'All', nok: 'NOK', ok: 'OK', unreviewed: 'Unreviewed' };
+        els.filterTabs.querySelectorAll('.filter-tab').forEach((btn) => {
+          const f = btn.getAttribute('data-filter');
+          btn.textContent = `${tabLabels[f]} (${tabCounts[f]})`;
+          btn.classList.toggle('active', f === state.summaryFilter);
+        });
+
+        renderBreakdownList();
+      }
+
+      function renderBreakdownList() {
+        const filter = state.summaryFilter;
+        const filtered = state.sessionCards.filter((card) => {
+          const res = state.results[card.id];
+          if (filter === 'all') return true;
+          if (filter === 'ok') return res === 'ok';
+          if (filter === 'nok') return res === 'nok';
+          if (filter === 'unreviewed') return !res;
+          return true;
+        });
+
+        els.breakdownList.innerHTML = '';
+
+        if (filtered.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'empty-filter';
+          empty.textContent = `No cards in "${filter}" category.`;
+          els.breakdownList.appendChild(empty);
+          return;
+        }
+
+        const frag = document.createDocumentFragment();
+        filtered.forEach((card) => {
+          const res = state.results[card.id];
+          const skips = state.skipCounts[card.id] || 0;
+          const isOpen = state.expandedSummaryIds.has(card.id);
+
+          const item = document.createElement('div');
+          item.className = 'review-item' + (isOpen ? ' open' : '');
+
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.className = 'review-row';
+
+          const numSpan = document.createElement('span');
+          numSpan.className = 'review-num';
+          numSpan.textContent = `#${card.num}`;
+
+          const qSpan = document.createElement('span');
+          qSpan.className = 'review-question';
+          qSpan.textContent = card.frontText;
+
+          const tags = document.createElement('span');
+          tags.className = 'review-tags';
+
+          if (skips > 0) {
+            const skipTag = document.createElement('span');
+            skipTag.className = 'status-tag skipped-tag';
+            skipTag.textContent = skips === 1 ? 'Skipped 1×' : `Skipped ${skips}×`;
+            tags.appendChild(skipTag);
+          }
+
+          const statusTag = document.createElement('span');
+          if (res === 'ok') {
+            statusTag.className = 'status-tag ok';
+            statusTag.textContent = 'OK';
+          } else if (res === 'nok') {
+            statusTag.className = 'status-tag nok';
+            statusTag.textContent = 'NOK';
+          } else {
+            statusTag.className = 'status-tag unreviewed';
+            statusTag.textContent = 'Unreviewed';
+          }
+          tags.appendChild(statusTag);
+
+          const chev = document.createElement('span');
+          chev.className = 'review-chevron';
+          chev.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+
+          row.append(numSpan, qSpan, tags, chev);
+          item.appendChild(row);
+
+          let detailEl = null;
+          function buildDetail() {
+            const d = document.createElement('div');
+            d.className = 'review-detail';
+            d.innerHTML = `
+              <div>
+                <div class="card-section-label">Question</div>
+                <div class="anki-content is-question">${card.frontHtml}</div>
+              </div>
+              <div>
+                <div class="card-section-label answer-label">Answer</div>
+                <div class="anki-content">${card.backHtml}</div>
+              </div>
+              ${card.extraHtml ? `<div><div class="card-section-label">Extra</div><div class="anki-content">${card.extraHtml}</div></div>` : ''}
+            `;
+            return d;
+          }
+
+          if (isOpen) {
+            detailEl = buildDetail();
+            item.appendChild(detailEl);
+          }
+
+          row.addEventListener('click', () => {
+            const nowOpen = !item.classList.contains('open');
+            item.classList.toggle('open', nowOpen);
+            if (nowOpen) {
+              state.expandedSummaryIds.add(card.id);
+              if (!detailEl) {
+                detailEl = buildDetail();
+                item.appendChild(detailEl);
+              }
+            } else {
+              state.expandedSummaryIds.delete(card.id);
+              if (detailEl) {
+                detailEl.remove();
+                detailEl = null;
+              }
+            }
+          });
+
+          frag.appendChild(item);
+        });
+
+        els.breakdownList.appendChild(frag);
+      }
+
+      els.filterTabs.addEventListener('click', (e) => {
+        const btn = e.target.closest('.filter-tab');
+        if (!btn) return;
+        state.summaryFilter = btn.getAttribute('data-filter');
+        els.filterTabs.querySelectorAll('.filter-tab').forEach((b) => {
+          b.classList.toggle('active', b === btn);
+        });
+        renderBreakdownList();
+      });
+
+      els.btnStudyNok.addEventListener('click', () => {
+        const nokCards = state.sessionCards.filter((c) => state.results[c.id] === 'nok');
+        if (nokCards.length > 0) {
+          startSession(nokCards);
+          showToast(`Studying ${nokCards.length} NOK card${nokCards.length === 1 ? '' : 's'}`);
+        }
+      });
+
+      els.btnRestartDeck.addEventListener('click', () => {
+        if (state.allCards.length > 0) {
+          startSession(state.allCards);
+          showToast('Restarted full deck');
+        }
+      });
+
+      // ================= PAST SESSIONS STORAGE & HISTORY =================
+      const SESSIONS_STORAGE_KEY = 'anki-viewer-sessions-v1';
+      const MAX_SAVED_SESSIONS = 100;
+
+      function formatDateTime(ts) {
+        try {
+          return new Date(ts).toLocaleString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+        } catch (_) {
+          return new Date(ts).toISOString().slice(0, 16).replace('T', ' ');
+        }
+      }
+
+      function scoreChipClass(pct) {
+        if (pct >= 80) return 'score-chip';
+        if (pct >= 50) return 'score-chip mid';
+        return 'score-chip low';
+      }
+
+      function loadSavedSessions() {
+        try {
+          const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
+          if (!raw) {
+            state.savedSessions = [];
+          } else {
+            const parsed = JSON.parse(raw);
+            state.savedSessions = Array.isArray(parsed) ? parsed : [];
+          }
+        } catch (_) {
+          state.savedSessions = [];
+        }
+        updateHistoryBadge();
+        renderRecentSessions();
+      }
+
+      function persistSavedSessions() {
+        let list = state.savedSessions.slice(0, MAX_SAVED_SESSIONS);
+        while (list.length > 0) {
+          try {
+            localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(list));
+            state.savedSessions = list;
+            return true;
+          } catch (_) {
+            // QuotaExceededError fallback: first strip per-card details from oldest entry, then drop oldest
+            const oldest = list[list.length - 1];
+            if (oldest && Array.isArray(oldest.cards) && oldest.cards.length > 0 && list.length > 1) {
+              list = list.slice(0, -1);
+            } else if (oldest && Array.isArray(oldest.cards) && oldest.cards.length > 0) {
+              list = [{ ...oldest, cards: [] }];
+            } else {
+              list = list.slice(0, -1);
+            }
+          }
+        }
+        try { localStorage.setItem(SESSIONS_STORAGE_KEY, '[]'); } catch (_) {}
+        return false;
+      }
+
+      function recordCurrentSession() {
+        if (state.sessionSaved) return;
+        const { ok, nok, done } = countResults();
+        if (done === 0) return;
+
+        const total = state.sessionCards.length;
+        const unreviewed = total - done;
+        const okPct = Math.round((ok / done) * 100);
+        const uniqueSkippedCount = Object.keys(state.skipCounts).length;
+        const finishedAt = state.finishedAt || Date.now();
+        const startedAt = state.startedAt || finishedAt;
+        const durationMs = Math.max(0, finishedAt - startedAt);
+
+        const record = {
+          id: `sess-${finishedAt}-${Math.random().toString(36).slice(2, 7)}`,
+          deckTitle: state.deckTitle || 'Anki Deck',
+          fileName: state.fileName || '',
+          startedAt,
+          finishedAt,
+          durationMs,
+          orderMode: state.orderMode,
+          isSubset: state.sessionCards.length < state.allCards.length,
+          totalCards: total,
+          gradedCount: done,
+          okCount: ok,
+          nokCount: nok,
+          unreviewedCount: unreviewed,
+          okPct,
+          totalSkips: state.totalSkips,
+          uniqueSkippedCount,
+          cards: state.sessionCards.map((c) => ({
+            num: c.num,
+            question: (c.frontText || '').slice(0, 140),
+            status: state.results[c.id] || 'unreviewed',
+            skips: state.skipCounts[c.id] || 0,
+          })),
+        };
+
+        state.savedSessions.unshift(record);
+        if (state.savedSessions.length > MAX_SAVED_SESSIONS) {
+          state.savedSessions = state.savedSessions.slice(0, MAX_SAVED_SESSIONS);
+        }
+        state.sessionSaved = persistSavedSessions();
+        updateHistoryBadge();
+        renderRecentSessions();
+      }
+
+      function deleteSavedSession(sessionId) {
+        state.savedSessions = state.savedSessions.filter((s) => s.id !== sessionId);
+        state.expandedHistoryIds.delete(sessionId);
+        delete state.historyCardFilters[sessionId];
+        persistSavedSessions();
+        updateHistoryBadge();
+        renderRecentSessions();
+        if (state.screen === 'history') {
+          renderHistoryScreen();
+        }
+        showToast('Session deleted');
+      }
+
+      function clearAllSessions() {
+        if (state.savedSessions.length === 0) return;
+        if (typeof window.confirm === 'function' && !window.confirm(`Delete all ${state.savedSessions.length} saved session(s) from browser storage?`)) {
+          return;
+        }
+        state.savedSessions = [];
+        state.expandedHistoryIds.clear();
+        state.historyCardFilters = {};
+        state.historyDeckFilter = '__all__';
+        try { localStorage.removeItem(SESSIONS_STORAGE_KEY); } catch (_) {}
+        updateHistoryBadge();
+        renderRecentSessions();
+        if (state.screen === 'history') {
+          renderHistoryScreen();
+        }
+        showToast('Cleared all past sessions');
+      }
+
+      function exportSessionsJson() {
+        if (state.savedSessions.length === 0) {
+          showToast('No sessions to export');
+          return;
+        }
+        try {
+          const blob = new Blob([JSON.stringify(state.savedSessions, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `anki-viewer-history-${new Date().toISOString().slice(0, 10)}.json`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+          showToast('Exported history JSON');
+        } catch (_) {
+          showToast('Could not export JSON');
+        }
+      }
+
+      function updateHistoryBadge() {
+        const count = state.savedSessions.length;
+        els.historyCountBadge.textContent = count;
+        els.historyCountBadge.classList.toggle('hidden', count === 0);
+      }
+
+      function openHistoryView(expandSessionId) {
+        if (expandSessionId) {
+          state.expandedHistoryIds.add(expandSessionId);
+          state.historyDeckFilter = '__all__';
+        }
+        renderHistoryScreen();
+        showScreen('history');
+      }
+
+      function renderRecentSessions() {
+        const sessions = state.savedSessions;
+        els.recentHistorySection.classList.toggle('hidden', sessions.length === 0);
+        if (sessions.length === 0) return;
+
+        els.recentHistoryList.innerHTML = '';
+        const frag = document.createDocumentFragment();
+        sessions.slice(0, 5).forEach((s) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'recent-item';
+
+          const meta = document.createElement('div');
+          meta.className = 'recent-meta';
+
+          const deck = document.createElement('div');
+          deck.className = 'recent-deck';
+          deck.textContent = s.deckTitle + (s.isSubset ? ' (NOK Review)' : '');
+
+          const sub = document.createElement('div');
+          sub.className = 'recent-sub';
+          sub.textContent = `${formatDateTime(s.finishedAt)} · ${s.okCount} OK · ${s.nokCount} NOK · ${formatDuration(s.durationMs)}`;
+
+          meta.append(deck, sub);
+
+          const score = document.createElement('div');
+          score.className = 'recent-score';
+          const chip = document.createElement('span');
+          chip.className = scoreChipClass(s.okPct);
+          chip.textContent = `${s.okPct}%`;
+          score.appendChild(chip);
+
+          btn.append(meta, score);
+          btn.addEventListener('click', () => openHistoryView(s.id));
+          frag.appendChild(btn);
+        });
+        els.recentHistoryList.appendChild(frag);
+      }
+
+      function renderHistoryScreen() {
+        const all = state.savedSessions;
+
+        // Populate deck filter dropdown
+        const deckNames = Array.from(new Set(all.map((s) => s.deckTitle))).sort();
+        if (state.historyDeckFilter !== '__all__' && !deckNames.includes(state.historyDeckFilter)) {
+          state.historyDeckFilter = '__all__';
+        }
+        els.historyDeckFilter.innerHTML = '';
+        const allOpt = document.createElement('option');
+        allOpt.value = '__all__';
+        allOpt.textContent = `All Decks (${all.length})`;
+        els.historyDeckFilter.appendChild(allOpt);
+        deckNames.forEach((name) => {
+          const opt = document.createElement('option');
+          opt.value = name;
+          const cnt = all.filter((s) => s.deckTitle === name).length;
+          opt.textContent = `${name} (${cnt})`;
+          els.historyDeckFilter.appendChild(opt);
+        });
+        els.historyDeckFilter.value = state.historyDeckFilter;
+
+        const filtered = state.historyDeckFilter === '__all__'
+          ? all
+          : all.filter((s) => s.deckTitle === state.historyDeckFilter);
+
+        els.btnExportHistory.disabled = all.length === 0;
+        els.btnClearHistory.disabled = all.length === 0;
+
+        if (filtered.length === 0) {
+          els.historyStatsGrid.classList.add('hidden');
+          els.historyList.innerHTML = '';
+          const empty = document.createElement('div');
+          empty.className = 'history-empty';
+          empty.innerHTML = '<h3>No saved sessions yet</h3><p style="margin:0">Complete a flashcard study session (or click End Session after grading cards) and your results will be saved automatically in this browser.</p>';
+          els.historyList.appendChild(empty);
+          return;
+        }
+
+        // Aggregate stats
+        const totalGraded = filtered.reduce((acc, s) => acc + (s.gradedCount || 0), 0);
+        const totalOk = filtered.reduce((acc, s) => acc + (s.okCount || 0), 0);
+        const totalNok = filtered.reduce((acc, s) => acc + (s.nokCount || 0), 0);
+        const avgPct = totalGraded > 0 ? Math.round((totalOk / totalGraded) * 100) : 0;
+        const uniqueDecks = new Set(filtered.map((s) => s.deckTitle)).size;
+
+        els.histTotalSessions.textContent = filtered.length;
+        els.histDecksSub.textContent = `${uniqueDecks} deck${uniqueDecks === 1 ? '' : 's'}`;
+        els.histTotalGraded.textContent = totalGraded;
+        els.histOkNokSub.textContent = `${totalOk} OK · ${totalNok} NOK`;
+        els.histAvgPct.textContent = `${avgPct}%`;
+        els.historyStatsGrid.classList.remove('hidden');
+
+        els.historyList.innerHTML = '';
+        const frag = document.createDocumentFragment();
+
+        filtered.forEach((s) => {
+          const isExpanded = state.expandedHistoryIds.has(s.id);
+          const card = document.createElement('article');
+          card.className = 'session-card';
+
+          const head = document.createElement('div');
+          head.className = 'session-card-head';
+          head.setAttribute('role', 'button');
+          head.setAttribute('tabindex', '0');
+
+          const main = document.createElement('div');
+          main.className = 'session-card-main';
+
+          const top = document.createElement('div');
+          top.className = 'session-card-top';
+
+          const deckName = document.createElement('span');
+          deckName.className = 'session-deck-name';
+          deckName.textContent = s.deckTitle;
+          top.appendChild(deckName);
+
+          const orderTag = document.createElement('span');
+          orderTag.className = 'session-meta-tag';
+          orderTag.textContent = s.orderMode === 'random' ? 'Random' : 'Sequential';
+          top.appendChild(orderTag);
+
+          if (s.isSubset) {
+            const subTag = document.createElement('span');
+            subTag.className = 'session-meta-tag subset';
+            subTag.textContent = 'NOK Review';
+            top.appendChild(subTag);
+          }
+
+          if (s.unreviewedCount > 0) {
+            const partialTag = document.createElement('span');
+            partialTag.className = 'session-meta-tag';
+            partialTag.textContent = `Partial (${s.gradedCount}/${s.totalCards})`;
+            top.appendChild(partialTag);
+          }
+
+          const meta = document.createElement('div');
+          meta.className = 'session-card-meta';
+          meta.textContent = `${formatDateTime(s.finishedAt)} · OK: ${s.okCount} · NOK: ${s.nokCount} · Skips: ${s.totalSkips} · ${formatDuration(s.durationMs)}`;
+
+          const bar = document.createElement('div');
+          bar.className = 'mini-bar';
+          const okW = s.gradedCount > 0 ? (s.okCount / s.gradedCount) * 100 : 0;
+          const nokW = s.gradedCount > 0 ? (s.nokCount / s.gradedCount) * 100 : 0;
+          const barOk = document.createElement('div');
+          barOk.className = 'mini-bar-ok';
+          barOk.style.width = `${okW}%`;
+          const barNok = document.createElement('div');
+          barNok.className = 'mini-bar-nok';
+          barNok.style.width = `${nokW}%`;
+          bar.append(barOk, barNok);
+
+          main.append(top, meta, bar);
+
+          const right = document.createElement('div');
+          right.className = 'session-card-right';
+
+          const score = document.createElement('span');
+          score.className = scoreChipClass(s.okPct);
+          score.textContent = `${s.okPct}% OK`;
+
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.className = 'session-delete-btn';
+          delBtn.title = 'Delete this session';
+          delBtn.setAttribute('aria-label', 'Delete session');
+          delBtn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>';
+          delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteSavedSession(s.id);
+          });
+
+          const chev = document.createElement('span');
+          chev.className = 'review-chevron';
+          chev.style.transform = isExpanded ? 'rotate(180deg)' : '';
+          chev.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+
+          right.append(score, delBtn, chev);
+          head.append(main, right);
+          card.appendChild(head);
+
+          function toggleExpand() {
+            if (state.expandedHistoryIds.has(s.id)) {
+              state.expandedHistoryIds.delete(s.id);
+            } else {
+              state.expandedHistoryIds.add(s.id);
+            }
+            renderHistoryScreen();
+          }
+
+          head.addEventListener('click', toggleExpand);
+          head.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              toggleExpand();
+            }
+          });
+
+          if (isExpanded) {
+            const body = document.createElement('div');
+            body.className = 'session-card-body';
+
+            const cardsArr = Array.isArray(s.cards) ? s.cards : [];
+            if (cardsArr.length === 0) {
+              const note = document.createElement('div');
+              note.className = 'empty-filter';
+              note.style.padding = '12px';
+              note.textContent = 'Per-card breakdown was omitted for this archived session.';
+              body.appendChild(note);
+            } else {
+              const activeFilter = state.historyCardFilters[s.id] || 'all';
+              const tabs = document.createElement('div');
+              tabs.className = 'filter-tabs';
+
+              const counts = {
+                all: cardsArr.length,
+                nok: cardsArr.filter((c) => c.status === 'nok').length,
+                ok: cardsArr.filter((c) => c.status === 'ok').length,
+                unreviewed: cardsArr.filter((c) => c.status === 'unreviewed').length,
+              };
+
+              [
+                ['all', 'All'],
+                ['nok', 'NOK'],
+                ['ok', 'OK'],
+                ...(counts.unreviewed > 0 ? [['unreviewed', 'Unreviewed']] : []),
+              ].forEach(([key, label]) => {
+                const tb = document.createElement('button');
+                tb.type = 'button';
+                tb.className = 'filter-tab' + (activeFilter === key ? ' active' : '');
+                tb.textContent = `${label} (${counts[key]})`;
+                tb.addEventListener('click', () => {
+                  state.historyCardFilters[s.id] = key;
+                  renderHistoryScreen();
+                });
+                tabs.appendChild(tb);
+              });
+
+              body.appendChild(tabs);
+
+              const shownCards = cardsArr.filter((c) => activeFilter === 'all' || c.status === activeFilter);
+              const tbl = document.createElement('div');
+              tbl.className = 'session-cards-table';
+
+              if (shownCards.length === 0) {
+                const emp = document.createElement('div');
+                emp.className = 'empty-filter';
+                emp.style.padding = '16px';
+                emp.textContent = `No cards marked ${activeFilter.toUpperCase()} in this session.`;
+                tbl.appendChild(emp);
+              } else {
+                shownCards.forEach((c) => {
+                  const row = document.createElement('div');
+                  row.className = 'session-card-row';
+
+                  const n = document.createElement('span');
+                  n.className = 'review-num';
+                  n.textContent = `#${c.num}`;
+
+                  const q = document.createElement('span');
+                  q.className = 'session-card-row-q';
+                  q.textContent = c.question || '[Card]';
+                  q.title = c.question || '';
+
+                  const rtags = document.createElement('span');
+                  rtags.className = 'review-tags';
+
+                  if (c.skips > 0) {
+                    const st = document.createElement('span');
+                    st.className = 'status-tag skipped-tag';
+                    st.textContent = `Skipped ${c.skips}×`;
+                    rtags.appendChild(st);
+                  }
+
+                  const badge = document.createElement('span');
+                  if (c.status === 'ok') {
+                    badge.className = 'status-tag ok';
+                    badge.textContent = 'OK';
+                  } else if (c.status === 'nok') {
+                    badge.className = 'status-tag nok';
+                    badge.textContent = 'NOK';
+                  } else {
+                    badge.className = 'status-tag unreviewed';
+                    badge.textContent = 'Unreviewed';
+                  }
+                  rtags.appendChild(badge);
+
+                  row.append(n, q, rtags);
+                  tbl.appendChild(row);
+                });
+              }
+
+              body.appendChild(tbl);
+            }
+
+            card.appendChild(body);
+          }
+
+          frag.appendChild(card);
+        });
+
+        els.historyList.appendChild(frag);
+      }
+
+      els.btnHeaderHistory.addEventListener('click', (e) => {
+        e.currentTarget.blur();
+        if (state.screen === 'history') {
+          showScreen(state.previousScreen || 'import');
+        } else {
+          openHistoryView();
+        }
+      });
+
+      els.btnRecentViewAll.addEventListener('click', () => openHistoryView());
+      els.btnSummaryHistory.addEventListener('click', () => openHistoryView());
+      els.btnHistoryBack.addEventListener('click', () => showScreen(state.previousScreen || 'import'));
+      els.historyDeckFilter.addEventListener('change', (e) => {
+        state.historyDeckFilter = e.target.value;
+        renderHistoryScreen();
+      });
+      els.btnExportHistory.addEventListener('click', exportSessionsJson);
+      els.btnClearHistory.addEventListener('click', clearAllSessions);
+
+      // ================= IMAGE LIGHTBOX =================
+      const lb = {
+        open: false,
+        scale: 1,
+        x: 0,
+        y: 0,
+        dragging: false,
+        startX: 0,
+        startY: 0,
+        origX: 0,
+        origY: 0,
+      };
+
+      function updateLightboxTransform() {
+        els.lightboxImg.style.transform = `translate3d(${lb.x}px, ${lb.y}px, 0) scale(${lb.scale})`;
+        els.lbZoomReset.textContent = `${Math.round(lb.scale * 100)}%`;
+      }
+
+      function openLightbox(src, alt) {
+        lb.open = true;
+        lb.scale = 1;
+        lb.x = 0;
+        lb.y = 0;
+        els.lightboxImg.src = src;
+        els.lightboxImg.alt = alt || 'Zoomed image';
+        updateLightboxTransform();
+        els.lightbox.classList.add('open');
+      }
+
+      function closeLightbox() {
+        lb.open = false;
+        els.lightbox.classList.remove('open');
+      }
+
+      function setLightboxScale(nextScale) {
+        lb.scale = Math.max(0.5, Math.min(6, nextScale));
+        if (lb.scale <= 1) {
+          lb.x = 0;
+          lb.y = 0;
+        }
+        updateLightboxTransform();
+      }
+
+      document.addEventListener('click', (e) => {
+        const img = e.target.closest('.anki-content img');
+        if (img) {
+          e.stopPropagation();
+          openLightbox(img.currentSrc || img.src, img.alt);
+        }
+      });
+
+      els.lbClose.addEventListener('click', closeLightbox);
+      els.lbZoomIn.addEventListener('click', () => setLightboxScale(lb.scale * 1.3));
+      els.lbZoomOut.addEventListener('click', () => setLightboxScale(lb.scale / 1.3));
+      els.lbZoomReset.addEventListener('click', () => { lb.scale = 1; lb.x = 0; lb.y = 0; updateLightboxTransform(); });
+
+      els.lightbox.addEventListener('click', (e) => {
+        if (e.target === els.lightbox) closeLightbox();
+      });
+
+      els.lightbox.addEventListener('wheel', (e) => {
+        if (!lb.open) return;
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+        setLightboxScale(lb.scale * factor);
+      }, { passive: false });
+
+      els.lightboxImg.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        lb.dragging = true;
+        lb.startX = e.clientX;
+        lb.startY = e.clientY;
+        lb.origX = lb.x;
+        lb.origY = lb.y;
+        els.lightboxImg.classList.add('dragging');
+        try { els.lightboxImg.setPointerCapture(e.pointerId); } catch (_) {}
+      });
+
+      els.lightboxImg.addEventListener('pointermove', (e) => {
+        if (!lb.dragging) return;
+        lb.x = lb.origX + (e.clientX - lb.startX);
+        lb.y = lb.origY + (e.clientY - lb.startY);
+        updateLightboxTransform();
+      });
+
+      function endLightboxDrag(e) {
+        if (!lb.dragging) return;
+        lb.dragging = false;
+        els.lightboxImg.classList.remove('dragging');
+        try { els.lightboxImg.releasePointerCapture(e.pointerId); } catch (_) {}
+      }
+
+      els.lightboxImg.addEventListener('pointerup', endLightboxDrag);
+      els.lightboxImg.addEventListener('pointercancel', endLightboxDrag);
+
+      // ================= KEYBOARD SHORTCUTS =================
+      document.addEventListener('keydown', (e) => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+        if (lb.open) {
+          if (e.key === 'Escape') { e.preventDefault(); closeLightbox(); }
+          else if (e.key === '+' || e.key === '=') { e.preventDefault(); setLightboxScale(lb.scale * 1.25); }
+          else if (e.key === '-' || e.key === '_') { e.preventDefault(); setLightboxScale(lb.scale / 1.25); }
+          else if (e.key === '0') { e.preventDefault(); lb.scale = 1; lb.x = 0; lb.y = 0; updateLightboxTransform(); }
+          return;
+        }
+
+        if (state.screen === 'history') {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            showScreen(state.previousScreen || 'import');
+          }
+          return;
+        }
+
+        if (state.screen !== 'study') return;
+
+        // Ignore if user is interacting with a button via Space/Enter when focused explicitly on another control
+        const tag = document.activeElement && document.activeElement.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+        const key = e.key;
+        const lower = key.toLowerCase();
+
+        if (!state.revealed) {
+          if (key === ' ' || key === 'Enter') {
+            e.preventDefault();
+            revealAnswer();
+          } else if (lower === 's' || key === '2' || key === 'ArrowDown') {
+            e.preventDefault();
+            skipCurrent();
+          } else if (lower === 'z' || key === 'Backspace') {
+            e.preventDefault();
+            undoLast();
+          }
+        } else {
+          if (key === '1' || key === 'ArrowLeft' || lower === 'n') {
+            e.preventDefault();
+            gradeCurrent('nok');
+          } else if (key === '2' || key === 'ArrowDown' || lower === 's') {
+            e.preventDefault();
+            skipCurrent();
+          } else if (key === '3' || key === 'ArrowRight' || lower === 'o') {
+            e.preventDefault();
+            gradeCurrent('ok');
+          } else if (lower === 'z' || key === 'Backspace') {
+            e.preventDefault();
+            undoLast();
+          }
+        }
+      });
+
+      // Init
+      initTheme();
+      loadSavedSessions();
+    })();
+  </script>
+</body>
+</html>
